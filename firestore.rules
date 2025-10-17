@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    /**
+     * @description This ruleset enforces a user-ownership model for gridMaps.
+     *   Any user can read any grid map.
+     *   Only the owner (identified by userId) can create, update, or delete their grid maps.
+     * @path /gridMaps/{mapId}
+     * @allow (create) auth.uid: 'user_abc', request.resource.data.userId: 'user_abc' - Allows creating a new gridMap if the authenticated user's ID matches the userId in the data.
+     * @deny (create) auth.uid: 'user_xyz', request.resource.data.userId: 'user_abc' - Denies creating a new gridMap if the authenticated user's ID does not match the userId in the data.
+     * @allow (update) auth.uid: 'user_abc', resource.data.userId: 'user_abc' - Allows updating a gridMap if the authenticated user's ID matches the userId in the existing data.
+     * @deny (update) auth.uid: 'user_xyz', resource.data.userId: 'user_abc' - Denies updating a gridMap if the authenticated user's ID does not match the userId in the existing data.
+     * @allow (delete) auth.uid: 'user_abc', resource.data.userId: 'user_abc' - Allows deleting a gridMap if the authenticated user's ID matches the userId in the existing data.
+     * @deny (delete) auth.uid: 'user_xyz', resource.data.userId: 'user_abc' - Denies deleting a gridMap if the authenticated user's ID does not match the userId in the existing data.
+     * @principle Enforces document ownership for writes, and allows public reads.
+     */
+    match /gridMaps/{mapId} {
+      // Anyone can read gridMaps
+      allow get, list: if true;
+
+      // Only the owner can create, update, and delete gridMaps
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
+
+function isSignedIn() {
+  return request.auth != null;
+}
