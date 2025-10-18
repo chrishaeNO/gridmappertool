@@ -36,8 +36,13 @@ export type AnalyzeImageBrightnessOutput = z.infer<
 
 export async function analyzeImageBrightness(
   input: AnalyzeImageBrightnessInput
-): Promise<AnalyzeImageBrightnessOutput> {
-  return analyzeImageBrightnessFlow(input);
+): Promise<AnalyzeImageBrightnessOutput | null> {
+  try {
+    return await analyzeImageBrightnessFlow(input);
+  } catch (error) {
+    console.warn('AI image brightness analysis failed, falling back to manual detection:', error);
+    return null;
+  }
 }
 
 const prompt = ai.definePrompt({

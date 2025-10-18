@@ -156,6 +156,40 @@ function HomeContent() {
     }
   }, [imageSrc]);
 
+  // Simple brightness detection fallback function
+  const detectImageBrightness = async (dataUrl: string): Promise<number> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(128); // Default to medium brightness
+          return;
+        }
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let brightness = 0;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          brightness += (r + g + b) / 3;
+        }
+        
+        brightness = brightness / (data.length / 4);
+        resolve(brightness);
+      };
+      img.src = dataUrl;
+    });
+  };
+
   const processImage = async (dataUrl: string) => {
       setImageSrc(dataUrl);
       if (isMobileSheetOpen) {
@@ -168,24 +202,61 @@ function HomeContent() {
       });
       try {
         const analysis = await analyzeImageBrightness({ photoDataUri: dataUrl });
-        if (analysis.brightness === 'dark') {
+        if (analysis?.brightness === 'dark') {
           setGridColor('#FFFFFF');
           setLabelColor('#FFFFFF');
-        } else {
+          toast({
+            title: 'Color Contrast Set',
+            description: 'Grid colors adjusted for dark image.',
+          });
+        } else if (analysis?.brightness === 'light') {
           setGridColor('#000000');
           setLabelColor('#000000');
+          toast({
+            title: 'Color Contrast Set',
+            description: 'Grid colors adjusted for light image.',
+          });
+        } else {
+          // Fallback: Use simple brightness detection
+          const brightness = await detectImageBrightness(dataUrl);
+          if (brightness < 128) {
+            setGridColor('#FFFFFF');
+            setLabelColor('#FFFFFF');
+          } else {
+            setGridColor('#000000');
+            setLabelColor('#000000');
+          }
+          toast({
+            title: 'Color Contrast Set',
+            description: 'Grid colors automatically adjusted.',
+          });
         }
-        toast({
-          title: 'Color Contrast Set',
-          description: `Image is ${analysis.brightness}, colors adjusted.`,
-        });
       } catch (error) {
-        console.error("Failed to analyze image brightness", error);
-        toast({
-          variant: 'destructive',
-          title: 'Color Analysis Failed',
-          description: 'Could not automatically set contrast colors.',
-        });
+        console.error('Error analyzing image brightness:', error);
+        // Fallback: Use simple brightness detection
+        try {
+          const brightness = await detectImageBrightness(dataUrl);
+          if (brightness < 128) {
+            setGridColor('#FFFFFF');
+            setLabelColor('#FFFFFF');
+          } else {
+            setGridColor('#000000');
+            setLabelColor('#000000');
+          }
+          toast({
+            title: 'Color Contrast Set',
+            description: 'Grid colors automatically adjusted.',
+          });
+        } catch (fallbackError) {
+          // Final fallback to default colors
+          setGridColor('#000000');
+          setLabelColor('#000000');
+          toast({
+            variant: 'destructive',
+            title: 'Using Default Colors',
+            description: 'Could not analyze image brightness.',
+          });
+        }
       }
   }
 

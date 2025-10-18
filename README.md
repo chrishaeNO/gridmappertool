@@ -69,7 +69,17 @@ Create a `.env` file with the following variables:
 DATABASE_URL="your-postgresql-connection-string"
 JWT_SECRET="your-jwt-secret"
 NEXTAUTH_SECRET="your-nextauth-secret"
+GOOGLE_GENAI_API_KEY="your-google-ai-api-key" # Optional: For automatic brightness detection
 ```
+
+### Optional: Google AI Integration
+
+GridMapper includes an optional AI-powered automatic brightness detection feature that adjusts grid colors based on image content. To enable this feature:
+
+1. Get a Google AI API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Add the `GOOGLE_GENAI_API_KEY` to your environment variables
+
+**Note**: If this API key is not provided, the application will automatically fall back to a client-side brightness detection algorithm. The app will work perfectly fine without it.
 
 ## Deployment
 
