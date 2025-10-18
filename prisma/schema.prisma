@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  gridMaps GridMap[]
+
+  @@map("users")
+}
+
+model GridMap {
+  id               String   @id @default(cuid())
+  name             String
+  imageSrc         String
+  imageFile        Json?
+  imageDimensions  Json?
+  cellSize         Float    @default(50)
+  unit             String   @default("px")
+  dpi              Int      @default(96)
+  gridOffset       Json     @default("{\"x\": 0, \"y\": 0}")
+  gridColor        String   @default("#000000")
+  labelColor       String   @default("#000000")
+  backgroundColor  String   @default("#ffffff")
+  gridThickness    Float    @default(1)
+  splitCols        Int      @default(1)
+  splitRows        Int      @default(1)
+  sliceNames       Json     @default("[]")
+  showCenterCoords Boolean  @default(false)
+  showScaleBar     Boolean  @default(true)
+  imageZoom        Float    @default(1)
+  panOffset        Json     @default("{\"x\": 0, \"y\": 0}")
+  shared           Boolean  @default(false)
+  accessCode       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("grid_maps")
+}

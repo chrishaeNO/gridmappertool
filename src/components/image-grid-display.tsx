@@ -1,0 +1,442 @@
+
+"use client";
+
+import React, { useMemo, useEffect, useState, useRef } from "react";
+import { cn } from "@/lib/utils";
+
+export type ImageDimensions = {
+  naturalWidth: number;
+  naturalHeight: number;
+};
+
+type ImageGridDisplayProps = {
+  imageSrc: string;
+  imageDimensions: ImageDimensions;
+  imageRef: React.RefObject<HTMLImageElement>;
+  onImageLoad: (dimensions: ImageDimensions) => void;
+  cellSize: number;
+  unit: "px" | "mm";
+  dpi: number;
+  gridOffset: { x: number; y: number };
+  onHover: (coords: { col: string; row: number } | null) => void;
+  hoveredCoords: { col: string; row: number } | null;
+  clickedCoords?: { col: string; row: number } | null;
+  onCellClick?: (coords: { col: string; row: number } | null) => void;
+  gridColor: string;
+  labelColor: string;
+  gridThickness: number;
+  containerRef: React.RefObject<HTMLDivElement>;
+  gridIndex: { row: number; col: number };
+  totalGrids: { rows: number; cols: number };
+  showCenterCoords: boolean;
+  onGridCropChange: (isCropped: boolean) => void;
+  sliceName: string;
+  onSliceNameChange: (newName: string) => void;
+  isSelected: boolean;
+  onClick: () => void;
+  isEditing: boolean;
+  onStartEditing: () => void;
+  isReadOnly?: boolean;
+  imageZoom: number;
+  panOffset: { x: number; y: number };
+};
+
+const GridLines = React.memo(({ numCols, numRows, colWidth, rowHeight, strokeColor, strokeWidth }: any) => {
+    const lines = [];
+    if (numCols < 0 || numRows < 0 || colWidth <= 0 || rowHeight <= 0) return null;
+    // Vertical lines
+    for (let i = 0; i <= numCols; i++) {
+        lines.push(<line key={`v-${i}`} x1={i * colWidth} y1={0} x2={i * colWidth} y2={numRows * rowHeight} stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />);
+    }
+    // Horizontal lines
+    for (let i = 0; i <= numRows; i++) {
+        lines.push(<line key={`h-${i}`} x1={0} y1={i * rowHeight} x2={numCols * colWidth} y2={i * rowHeight} stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />);
+    }
+    return <>{lines}</>;
+});
+GridLines.displayName = 'GridLines';
+
+
+function ImageGridDisplay({
+  imageSrc,
+  imageDimensions,
+  imageRef,
+  onImageLoad,
+  cellSize,
+  unit,
+  dpi,
+  gridOffset,
+  onHover,
+  hoveredCoords,
+  clickedCoords,
+  onCellClick,
+  gridColor,
+  labelColor,
+  gridThickness,
+  containerRef,
+  gridIndex,
+  totalGrids,
+  showCenterCoords,
+  onGridCropChange,
+  sliceName,
+  onSliceNameChange,
+  isSelected,
+  onClick,
+  isEditing,
+  onStartEditing,
+  isReadOnly = false,
+  imageZoom,
+  panOffset
+}: ImageGridDisplayProps) {
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isSplit = totalGrids.rows * totalGrids.cols > 1;
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+  
+
+  const gridData = useMemo(() => {
+    if (!imageDimensions || cellSize <= 0) return null;
+    
+    const { naturalWidth, naturalHeight } = imageDimensions;
+    const { rows: totalRows, cols: totalCols } = totalGrids;
+    const { row: rowIndex, col: colIndex } = gridIndex;
+
+    const sliceWidth = naturalWidth / totalCols;
+    const sliceHeight = naturalHeight / totalRows;
+
+    const sliceLeft = colIndex * sliceWidth;
+    const sliceTop = rowIndex * sliceHeight;
+
+    const cellSizePx = unit === "px" ? cellSize : (cellSize / 25.4) * dpi;
+    if (cellSizePx <= 0) return null;
+    
+    const gridStartXInSlice = gridOffset.x - sliceLeft;
+    const gridStartYInSlice = gridOffset.y - sliceTop;
+
+    const firstColOffset = gridStartXInSlice < 0 ? (Math.ceil(Math.abs(gridStartXInSlice) / cellSizePx) * cellSizePx) + gridStartXInSlice : gridStartXInSlice % cellSizePx;
+    const firstRowOffset = gridStartYInSlice < 0 ? (Math.ceil(Math.abs(gridStartYInSlice) / cellSizePx) * cellSizePx) + gridStartYInSlice : gridStartYInSlice % cellSizePx;
+    
+    const numCols = Math.floor((sliceWidth - firstColOffset) / cellSizePx);
+    const numRows = Math.floor((sliceHeight - firstRowOffset) / cellSizePx);
+    
+    // Beregn startindeks for koordinater basert på slice-posisjon og grid-offset
+    // Dette sikrer at hver slice har unike, kontinuerlige koordinater
+    const totalColsFromStart = Math.floor((sliceLeft - gridOffset.x + firstColOffset) / cellSizePx);
+    const totalRowsFromStart = Math.floor((sliceTop - gridOffset.y + firstRowOffset) / cellSizePx);
+
+    const startColIndex = Math.max(0, totalColsFromStart);
+    const startRowIndex = Math.max(0, totalRowsFromStart);
+    
+    // Beregn om grid-celler blir croppet
+    // En grid er croppet hvis:
+    // 1. Vi ikke kan få noen hele celler (numCols eller numRows er 0)
+    // 2. Det er plass til flere celler enn vi viser (dvs. det er restplass som ikke brukes)
+    
+    const availableWidth = sliceWidth - firstColOffset;
+    const availableHeight = sliceHeight - firstRowOffset;
+    
+    // Beregn hvor mye plass som er igjen etter de hele cellene
+    const remainingWidth = availableWidth - (numCols * cellSizePx);
+    const remainingHeight = availableHeight - (numRows * cellSizePx);
+    
+    // Grid er croppet hvis:
+    // - Vi ikke kan få noen hele celler, ELLER
+    // - Det er betydelig restplass (mer enn 10% av en celle) som ikke brukes
+    const cellThreshold = cellSizePx * 0.1; // 10% av en celle
+    const isCropped = numCols === 0 || numRows === 0 || 
+                     remainingWidth > cellThreshold || 
+                     remainingHeight > cellThreshold;
+    
+    return {
+      numCols: numCols + 1,
+      numRows: numRows + 1,
+      startColIndex,
+      startRowIndex,
+      colWidth: cellSizePx,
+      rowHeight: cellSizePx,
+      gridLeft: firstColOffset,
+      gridTop: firstRowOffset,
+      sliceWidth,
+      sliceHeight,
+      sliceLeft,
+      sliceTop,
+      isCropped,
+    };
+  }, [imageDimensions, cellSize, unit, dpi, gridOffset, gridIndex, totalGrids]);
+
+  useEffect(() => {
+    if (gridData && !isReadOnly) {
+      onGridCropChange(gridData.isCropped);
+    }
+  }, [gridData, onGridCropChange, isReadOnly]);
+
+    if (!imageSrc || !gridData || !imageDimensions) {
+        return null;
+    }
+    
+    const {
+      numCols,
+      numRows,
+      startColIndex,
+      startRowIndex,
+      colWidth,
+      rowHeight,
+      gridLeft,
+      gridTop,
+      sliceLeft,
+      sliceTop,
+      sliceWidth,
+      sliceHeight,
+    } = gridData;
+    
+    const labelSize = Math.max(25, Math.min(40, colWidth * 0.4));
+    const labelFontSize = Math.max(10, Math.min(16, colWidth * 0.3));
+
+    const handleNameSubmit = () => {
+      if(isReadOnly) return;
+      onSliceNameChange(inputRef.current?.value || sliceName);
+    };
+
+    const handleGridClick = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (!onCellClick) return;
+        
+        // Stopp event-propagering for å unngå at parent onClick fjerner koordinater
+        event.stopPropagation();
+        
+        // Finn nærmeste container med transform for å få riktig skala
+        let element = event.currentTarget as HTMLElement;
+        let scale = 1;
+        
+        // Gå opp i DOM-hierarkiet for å finne scale-transform
+        while (element && element !== document.body) {
+            const transform = window.getComputedStyle(element).transform;
+            if (transform && transform !== 'none') {
+                const matrix = transform.match(/matrix\(([^)]+)\)/);
+                if (matrix) {
+                    const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+                    scale = values[0]; // scaleX verdi
+                    break;
+                }
+            }
+            element = element.parentElement as HTMLElement;
+        }
+        
+        const rect = event.currentTarget.getBoundingClientRect();
+        // Juster for skala
+        const x = (event.clientX - rect.left) / scale;
+        const y = (event.clientY - rect.top) / scale;
+        
+        // Beregn hvilken celle som ble klikket, justert for grid-offset
+        const adjustedX = x - gridLeft;
+        const adjustedY = y - gridTop;
+        
+        if (adjustedX < 0 || adjustedY < 0 || adjustedX >= numCols * colWidth || adjustedY >= numRows * rowHeight) {
+            onCellClick(null);
+            return;
+        }
+        
+        const localColIndex = Math.floor(adjustedX / colWidth);
+        const localRowIndex = Math.floor(adjustedY / rowHeight);
+        
+        const colIndex = localColIndex + startColIndex;
+        const rowIndex = localRowIndex + startRowIndex;
+        
+        const colChar = String.fromCharCode(65 + colIndex);
+        const rowNumber = rowIndex + 1;
+        
+        onCellClick({ col: colChar, row: rowNumber });
+    };
+
+    const renderCenterCoord = () => {
+        // Prioriter click-koordinater, bruk hover kun hvis ingen click-koordinater
+        const coordsToShow = clickedCoords || hoveredCoords;
+        if (!showCenterCoords || !coordsToShow) return null;
+
+        const hoveredColChar = coordsToShow.col;
+        const hoveredRowNumber = coordsToShow.row;
+
+        const hoveredColIndex = hoveredColChar.charCodeAt(0) - 65;
+        const hoveredRowIndex = hoveredRowNumber - 1;
+        
+        const isColInSlice = hoveredColIndex >= startColIndex && hoveredColIndex < startColIndex + numCols;
+        const isRowInSlice = hoveredRowIndex >= startRowIndex && hoveredRowIndex < startRowIndex + numRows;
+
+        if (isColInSlice && isRowInSlice) {
+            const localColIndex = hoveredColIndex - startColIndex;
+            const localRowIndex = hoveredRowIndex - startRowIndex;
+
+            // Beregn koordinat-posisjon nøyaktig
+            const x = labelSize + gridLeft + localColIndex * colWidth + colWidth / 2;
+            const y = labelSize + gridTop + localRowIndex * rowHeight + rowHeight / 2;
+            
+            if (x > sliceWidth + labelSize || y > sliceHeight + labelSize) return null;
+
+            return (
+                <div
+                    className="absolute pointer-events-none flex items-center justify-center"
+                    style={{
+                        left: x,
+                        top: y,
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: Math.min(colWidth * 0.5, 48),
+                        color: labelColor,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        padding: '0.2em 0.4em',
+                        borderRadius: '0.25em',
+                        fontWeight: 'bold',
+                        textShadow: '0 0 5px black',
+                    }}
+                >
+                    {coordsToShow.col}{coordsToShow.row}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const shouldShowLabels = true; // Always show labels, even in read-only mode
+
+    const backgroundPositionX = `-${(sliceLeft * imageZoom) - panOffset.x}px`;
+    const backgroundPositionY = `-${(sliceTop * imageZoom) - panOffset.y}px`;
+
+
+    return (
+        <div 
+          className={cn(
+            "relative border-muted-foreground/20",
+            !isReadOnly && isSplit ? "cursor-pointer" : "cursor-default",
+            !isReadOnly && isSplit && isSelected ? "border-2 border-ring" : "border"
+          )}
+          style={{ width: sliceWidth + labelSize, height: sliceHeight + labelSize }}
+          onClick={onClick}
+          onDoubleClick={onStartEditing}
+        >
+            {/* Corner Box */}
+            {shouldShowLabels && <div className="absolute top-0 left-0" style={{width: labelSize, height: labelSize}}></div>}
+
+            {/* Column Labels */}
+            {shouldShowLabels && Array.from({ length: numCols }).map((_, i) => {
+              const xOnSlice = gridLeft + i * colWidth;
+              const xInCanvas = xOnSlice + colWidth / 2;
+              if (xInCanvas < 0 || xInCanvas > sliceWidth) return null;
+
+              return (
+                <div
+                    key={`col-${i}`}
+                    className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
+                    style={{
+                        color: labelColor,
+                        left: `${labelSize + xInCanvas - (colWidth/2)}px`,
+                        top: 0,
+                        width: `${colWidth}px`,
+                        height: `${labelSize}px`,
+                        fontSize: `${labelFontSize}px`,
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                    }}
+                >
+                    {String.fromCharCode(65 + startColIndex + i)}
+                </div>
+              )
+            })}
+            
+            {/* Row Labels */}
+            {shouldShowLabels && Array.from({ length: numRows }).map((_, i) => {
+              const yOnSlice = gridTop + i * rowHeight;
+              const yInCanvas = yOnSlice + rowHeight / 2;
+              if (yInCanvas < 0 || yInCanvas > sliceHeight) return null;
+
+              return (
+                <div
+                    key={`row-${i}`}
+                    className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
+                    style={{
+                        color: labelColor,
+                        top: `${labelSize + yInCanvas - (rowHeight/2)}px`,
+                        left: 0,
+                        height: `${rowHeight}px`,
+                        width: `${labelSize}px`,
+                        fontSize: `${labelFontSize}px`,
+                    }}
+                >
+                    {startRowIndex + i + 1}
+                </div>
+              )
+            })}
+
+            <div 
+              className="absolute overflow-hidden" 
+              style={{ left: labelSize, top: labelSize, width: sliceWidth, height: sliceHeight }}
+              onClick={handleGridClick}
+            >
+                <div
+                    className="absolute pointer-events-none"
+                    style={{
+                        backgroundImage: `url(${imageSrc})`,
+                        backgroundSize: `${imageDimensions.naturalWidth * imageZoom}px ${imageDimensions.naturalHeight * imageZoom}px`,
+                        backgroundPosition: `${backgroundPositionX} ${backgroundPositionY}`,
+                        left: 0,
+                        top: 0,
+                        width: `100%`,
+                        height: `100%`,
+                    }}
+                />
+
+                <svg
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    style={{
+                        transform: `translate(${gridLeft}px, ${gridTop}px)`,
+                        width: (numCols) * colWidth,
+                        height: (numRows) * rowHeight,
+                    }}
+                >
+                    <GridLines numCols={numCols} numRows={numRows} colWidth={colWidth} rowHeight={rowHeight} strokeColor={gridColor} strokeWidth={gridThickness} />
+                </svg>
+
+                {(!isReadOnly && isSplit) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {isEditing ? (
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        defaultValue={sliceName}
+                        className="bg-background/80 text-foreground text-center p-2 rounded-md outline-none ring-2 ring-ring"
+                        style={{
+                          fontSize: Math.min(sliceWidth, sliceHeight) / 10,
+                          width: '80%',
+                        }}
+                        onBlur={handleNameSubmit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleNameSubmit();
+                          if (e.key === 'Escape') onSliceNameChange(sliceName); // Revert on escape
+                        }}
+                        onClick={(e) => e.stopPropagation()} // Prevent click from bubbling up
+                      />
+                    ) : (
+                      <div
+                        className="bg-black/50 text-white p-2 rounded-md text-lg font-bold pointer-events-none"
+                        style={{
+                          fontSize: Math.min(sliceWidth, sliceHeight) / 8,
+                          color: labelColor,
+                          textShadow: '0 0 8px black'
+                        }}
+                      >
+                        {sliceName}
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+            {renderCenterCoord()}
+        </div>
+    );
+}
+
+export default ImageGridDisplay;

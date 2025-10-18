@@ -1,0 +1,137 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the user's profile picture."
+        }
+      },
+      "required": ["id", "email"]
+    },
+    "GridMap": {
+      "title": "GridMap",
+      "description": "Represents a grid map created by a user, including its settings and shared state.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GridMap entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The user who created the grid map."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image used in the grid map."
+        },
+        "imageDimensions": {
+            "type": "object",
+            "properties": {
+                "naturalWidth": {"type": "number"},
+                "naturalHeight": {"type": "number"}
+            }
+        },
+        "gridCellSize": {
+          "type": "number",
+          "description": "Size of the grid cells."
+        },
+        "gridUnit": {
+          "type": "string",
+          "enum": ["px", "mm"],
+          "description": "Units used for the grid cell size."
+        },
+        "dpi": {
+            "type": "number"
+        },
+        "gridOffset": {
+            "type": "object",
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"}
+            }
+        },
+        "gridColor": {
+          "type": "string",
+          "description": "Color of the grid lines (e.g., '#000000')."
+        },
+        "labelColor": {
+          "type": "string",
+          "description": "Color of the coordinate labels."
+        },
+        "gridThickness": {
+            "type": "number"
+        },
+        "shared": {
+          "type": "boolean",
+          "description": "Indicates whether the grid map is shared."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the grid map was created."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the grid map was last updated."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user defined name of this grid map."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "imageUrl",
+        "imageDimensions",
+        "gridCellSize",
+        "gridUnit",
+        "dpi",
+        "gridOffset",
+        "gridColor",
+        "labelColor",
+        "gridThickness"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores user profile information."
+    },
+    "/gridMaps/{mapId}": {
+      "schema": {
+        "$ref": "#/entities/GridMap"
+      },
+      "description": "Stores shared grid maps. Publicly readable, but only writable by the owner."
+    }
+  }
+}
