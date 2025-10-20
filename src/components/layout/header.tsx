@@ -35,6 +35,7 @@ type HeaderProps = {
   gridMapperProps?: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'>;
   isMobileSheetOpen?: boolean;
   setMobileSheetOpen?: Dispatch<SetStateAction<boolean>>;
+  onMobileControlsToggle?: () => void;
 };
 
 function AuthActions() {
@@ -84,7 +85,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,47 +122,19 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
   const isEditorPage = !!onExport;
 
   return (
-    <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b shrink-0 z-10 bg-card/80 backdrop-blur-sm">
-      <div className="flex items-center gap-3">
-        {isEditorPage && (
-            <div className="md:hidden">
-            <Sheet open={isMobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-                <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                    <PanelLeft className="h-5 w-5" />
-                    <span className="sr-only">Toggle Controls</span>
-                </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-full max-w-sm">
-                <SheetHeader className="p-4 border-b">
-                    <SheetTitle>Controls</SheetTitle>
-                    <SheetDescription>
-                        Adjust your image and grid settings here.
-                    </SheetDescription>
-                    </SheetHeader>
-                {gridMapperProps && onImageUpload && (
-                    <ControlPanel
-                        onImageUpload={onImageUpload}
-                        hasImage={hasImage}
-                        {...gridMapperProps}
-                        setSliceNames={handleSliceNameChange}
-                    />
-                )}
-                </SheetContent>
-            </Sheet>
-            </div>
-        )}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-9 bg-primary/10 rounded-lg shadow-inner">
-            <Grid className="size-5 text-primary" />
+    <header className="flex items-center justify-between h-16 px-3 md:px-6 border-b shrink-0 z-10 bg-card/80 backdrop-blur-sm">
+      <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          <div className="flex items-center justify-center size-8 md:size-9 bg-primary/10 rounded-lg shadow-inner shrink-0">
+            <Grid className="size-4 md:size-5 text-primary" />
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-foreground tracking-tight">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <h1 className="text-lg md:text-xl font-semibold text-foreground tracking-tight shrink-0">
               GridMapper
             </h1>
             {gridMapperProps?.mapName && (
               <>
-                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground hidden sm:inline">•</span>
                 {isEditingMapName ? (
                   <input
                     ref={mapNameInputRef}
@@ -170,11 +143,11 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
                     onChange={(e) => gridMapperProps.setMapName(e.target.value)}
                     onBlur={handleMapNameSubmit}
                     onKeyDown={handleMapNameKeyDown}
-                    className="text-lg font-medium bg-transparent border-none outline-none focus:bg-background focus:border focus:border-ring rounded px-2 py-1 min-w-[120px]"
+                    className="text-sm md:text-lg font-medium bg-transparent border-none outline-none focus:bg-background focus:border focus:border-ring rounded px-1 md:px-2 py-1 min-w-[80px] md:min-w-[120px] flex-1"
                   />
                 ) : (
                   <span 
-                    className="text-lg font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                    className="text-sm md:text-lg font-medium text-foreground cursor-pointer hover:text-primary transition-colors truncate min-w-0"
                     onDoubleClick={handleMapNameDoubleClick}
                     title="Double-click to edit map name"
                   >
@@ -186,33 +159,24 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 md:gap-2 shrink-0">
+        {/* Mobile: Only Export button */}
+        {isEditorPage && onExport && (
+          <Button onClick={onExport} disabled={!hasImage} size="icon" className="md:hidden h-9 w-9 touch-manipulation">
+            <Download className="h-4 w-4" />
+            <span className="sr-only">Export</span>
+          </Button>
+        )}
+        
+        {/* Desktop: All buttons */}
         {onNewMap && (
-          <>
-            <Button onClick={onNewMap} variant="outline" size="icon" className="md:hidden">
-              <Plus className="h-4 w-4" />
-              <span className="sr-only">New Gridmap</span>
-            </Button>
-            <Button onClick={onNewMap} variant="outline" className="hidden md:inline-flex">
-              <Plus className="mr-2 h-4 w-4" />
-              New Gridmap
-            </Button>
-          </>
+          <Button onClick={onNewMap} variant="outline" className="hidden md:inline-flex">
+            <Plus className="mr-2 h-4 w-4" />
+            New Gridmap
+          </Button>
         )}
         {isEditorPage && onShare && onExport && onSave &&(
             <>
-                <Button onClick={onSave} disabled={!hasImage} variant="outline" size="icon" className="md:hidden">
-                    <Save className="h-4 w-4" />
-                    <span className="sr-only">Save</span>
-                </Button>
-                <Button onClick={onShare} disabled={!hasImage} variant="outline" size="icon" className="md:hidden">
-                    <Share2 className="h-4 w-4" />
-                    <span className="sr-only">Share</span>
-                </Button>
-                <Button onClick={onExport} disabled={!hasImage} size="icon" className="md:hidden">
-                    <Download className="h-4 w-4" />
-                    <span className="sr-only">Export</span>
-                </Button>
                 <Button onClick={onSave} disabled={!hasImage} variant="outline" className="hidden md:inline-flex">
                     <Save className="mr-2 h-4 w-4" />
                     Save
@@ -227,7 +191,11 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
                 </Button>
              </>
         )}
-        <AuthActions />
+        
+        {/* Desktop: Auth Actions */}
+        <div className="hidden md:block">
+          <AuthActions />
+        </div>
       </div>
     </header>
   );

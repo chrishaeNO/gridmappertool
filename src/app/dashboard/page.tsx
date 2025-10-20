@@ -11,6 +11,7 @@ import { ExternalLink, PlusCircle, Edit, Trash2, Share2, Eye } from 'lucide-reac
 import Footer from '@/components/layout/footer';
 import Header from '@/components/layout/header';
 import ShareModal from '@/components/share-modal';
+import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -37,73 +38,129 @@ type MapCardProps = {
   onEdit: (mapId: string) => void;
   onShare: (map: GridMap) => void;
   onDelete: (mapId: string, mapName: string) => void;
+  onRename: (mapId: string, newName: string) => void;
 };
 
-const MapCard = memo(({ map, onEdit, onShare, onDelete }: MapCardProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle className="flex items-center justify-between">
-        <span>{map.name}</span>
-        {map.shared && (
-          <div className="flex items-center text-green-600 text-sm">
-            <Share2 className="h-4 w-4 mr-1" />
-            Shared
-          </div>
-        )}
-      </CardTitle>
-      <CardDescription>
-        Created: {new Date(map.createdAt).toLocaleDateString()}
-      </CardDescription>
-    </CardHeader>
-    <CardFooter className="flex flex-col gap-2">
-      <div className="flex gap-2 w-full">
-        <Button onClick={() => onEdit(map.id)} variant="outline" className="flex-1">
-          <Edit className="mr-2 h-4 w-4" />
-          Edit
-        </Button>
-        <Button onClick={() => onShare(map)} variant="outline" className="flex-1">
-          <Share2 className="mr-2 h-4 w-4" />
-          Share
-        </Button>
-      </div>
-      <div className="flex gap-2 w-full">
-        {map.shared && (
-          <Button asChild variant="secondary" className="flex-1">
-            <Link href={`/map/${map.id}`} target="_blank">
-              <Eye className="mr-2 h-4 w-4" />
-              View Public
-            </Link>
+const MapCard = memo(({ map, onEdit, onShare, onDelete, onRename }: MapCardProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(map.name);
+
+  const handleNameSubmit = () => {
+    if (editName.trim() && editName !== map.name) {
+      onRename(map.id, editName.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSubmit();
+    } else if (e.key === 'Escape') {
+      setEditName(map.name);
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleNameSubmit}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent border-none outline-none focus:bg-background focus:border focus:border-ring rounded px-2 py-1 mr-2 text-base md:text-lg font-semibold"
+              autoFocus
+            />
+          ) : (
+            <span 
+              className="cursor-pointer hover:text-primary transition-colors touch-manipulation"
+              onDoubleClick={() => setIsEditing(true)}
+              onClick={() => setIsEditing(true)}
+              title="Tap to edit name"
+            >
+              {map.name}
+            </span>
+          )}
+          {map.shared && (
+            <div className="flex items-center text-green-600 text-sm">
+              <Share2 className="h-4 w-4 mr-1" />
+              Shared
+            </div>
+          )}
+        </CardTitle>
+        <CardDescription>
+          Created: {new Date(map.createdAt).toLocaleDateString()}
+        </CardDescription>
+      </CardHeader>
+      <CardFooter className="flex flex-col gap-3">
+        <div className="flex gap-2 w-full">
+          <Button 
+            onClick={() => onEdit(map.id)} 
+            variant="outline" 
+            className="flex-1 h-11 md:h-10 touch-manipulation"
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
           </Button>
-        )}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" className={map.shared ? "flex-1" : "w-full"}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+          <Button 
+            onClick={() => onShare(map)} 
+            variant="outline" 
+            className="flex-1 h-11 md:h-10 touch-manipulation"
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            Share
+          </Button>
+        </div>
+        <div className="flex gap-2 w-full">
+          {map.shared && (
+            <Button 
+              asChild 
+              variant="secondary" 
+              className="flex-1 h-11 md:h-10 touch-manipulation"
+            >
+              <Link href={`/map/${map.id}`} target="_blank">
+                <Eye className="mr-2 h-4 w-4" />
+                View Public
+              </Link>
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Map</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{map.name}"? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onDelete(map.id, map.name)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className={`${map.shared ? "flex-1" : "w-full"} h-11 md:h-10 touch-manipulation`}
               >
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </CardFooter>
-  </Card>
-));
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Map</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{map.name}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="touch-manipulation">Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => onDelete(map.id, map.name)}
+                  className="touch-manipulation"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+});
 
 MapCard.displayName = 'MapCard';
 
@@ -183,6 +240,40 @@ function MapList() {
     setSelectedMap(map);
     setShareModalOpen(true);
   }, []);
+
+  const handleRename = useCallback(async (mapId: string, newName: string) => {
+    try {
+      const response = await fetch(`/api/grid-maps/${mapId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to rename map');
+      }
+
+      // Update local state
+      setMaps(prev => prev.map(map => 
+        map.id === mapId ? { ...map, name: newName } : map
+      ));
+      
+      toast({
+        title: 'Map Renamed',
+        description: `Map has been renamed to "${newName}".`,
+      });
+    } catch (error) {
+      console.error('Error renaming map:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Rename Failed',
+        description: 'Failed to rename the map. Please try again.',
+      });
+    }
+  }, [toast]);
 
   const handleToggleShare = useCallback(async (shared: boolean, accessCode?: string | null) => {
     if (!selectedMap) return;
@@ -267,6 +358,7 @@ function MapList() {
             onEdit={handleEdit}
             onShare={handleShare}
             onDelete={handleDelete}
+            onRename={handleRename}
           />
         ))}
       </div>
@@ -344,10 +436,17 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-dvh bg-background text-foreground">
        <Header hasImage={false} onNewMap={handleNewMap} />
-       <main className="flex-1 container mx-auto p-4 md:p-8">
+       <main className="flex-1 container mx-auto p-4 md:p-8 mobile-bottom-spacing md:pb-8">
             <h1 className="text-3xl font-bold tracking-tight mb-8">Your Maps</h1>
             <MapList />
        </main>
+       
+       {/* Mobile Bottom Navigation */}
+       <MobileBottomNav
+         onNewMap={handleNewMap}
+         isEditorPage={false}
+       />
+       
        <Footer />
     </div>
   );

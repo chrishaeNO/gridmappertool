@@ -17,6 +17,15 @@ import { Suspense } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import LoginModal from '@/components/auth/login-modal';
 import ShareModal from '@/components/share-modal';
+import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import ControlPanel from "@/components/control-panel";
 
 function HomeContent() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -706,8 +715,9 @@ function HomeContent() {
         gridMapperProps={gridMapperProps}
         isMobileSheetOpen={isMobileSheetOpen}
         setMobileSheetOpen={setIsMobileSheetOpen}
+        onMobileControlsToggle={() => setIsMobileSheetOpen(true)}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto mobile-bottom-spacing md:pb-0">
         <GridMapper
           imageSrc={imageSrc}
           imageDimensions={imageDimensions}
@@ -717,6 +727,38 @@ function HomeContent() {
           {...gridMapperProps}
         />
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        onControlsToggle={() => setIsMobileSheetOpen(true)}
+        onSave={saveMap}
+        onShare={handleShare}
+        onNewMap={handleNewMap}
+        hasImage={!!imageSrc}
+        isEditorPage={true}
+      />
+      
+      {/* Mobile Controls Sheet */}
+      <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+        <SheetContent side="left" className="p-0 w-full max-w-sm">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Controls</SheetTitle>
+            <SheetDescription>
+              Adjust your image and grid settings here.
+            </SheetDescription>
+          </SheetHeader>
+          <ControlPanel
+            onImageUpload={handleImageUpload}
+            hasImage={!!imageSrc}
+            {...gridMapperProps}
+            setSliceNames={(index: number, newName: string) => {
+              const newSliceNames = [...sliceNames];
+              newSliceNames[index] = newName;
+              setSliceNames(newSliceNames);
+            }}
+          />
+        </SheetContent>
+      </Sheet>
       
       {/* Login Modal */}
       <LoginModal

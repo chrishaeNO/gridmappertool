@@ -86,6 +86,8 @@ export default function ImageWorkspace({
   const [editingSliceIndex, setEditingSliceIndex] = useState<number | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+  const [touchStartZoom, setTouchStartZoom] = useState<number>(1);
 
   const fitAndCenter = useCallback(() => {
     if (!imageDimensions || !containerRef.current || isReadOnly) {
@@ -279,6 +281,94 @@ export default function ImageWorkspace({
       }
     }
   };
+
+  // Touch event handlers for mobile support
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return null;
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) + 
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    );
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (disablePanning) return;
+    
+    if (e.touches.length === 1) {
+      // Single touch - start panning
+      if (!isReadOnly && imageZoom > 1) {
+        setIsPanning(true);
+        setPanStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      }
+    } else if (e.touches.length === 2 && !isReadOnly) {
+      // Two finger touch - start pinch zoom
+      const distance = getTouchDistance(e.touches);
+      if (distance) {
+        setLastTouchDistance(distance);
+        setTouchStartZoom(imageZoom);
+      }
+      setIsPanning(false);
+    }
+    e.preventDefault();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (disablePanning) return;
+    
+    if (e.touches.length === 1 && isPanning) {
+      // Single touch panning
+      const dx = e.touches[0].clientX - panStart.x;
+      const dy = e.touches[0].clientY - panStart.y;
+      
+      if (isReadOnly) {
+        // For shared maps: pan the entire map
+        if (contentRef.current) {
+          const currentTransform = contentRef.current.style.transform;
+          const translateMatch = currentTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+          const currentX = translateMatch ? parseFloat(translateMatch[1]) : 0;
+          const currentY = translateMatch ? parseFloat(translateMatch[2]) : 0;
+          
+          const newX = currentX + dx;
+          const newY = currentY + dy;
+          
+          contentRef.current.style.transform = `scale(${scale}) translate(${newX}px, ${newY}px)`;
+        }
+      } else {
+        // For editor: use panOffset
+        setPanOffset(prev => {
+          const newX = prev.x + dx;
+          const newY = prev.y + dy;
+          return { x: newX, y: newY };
+        });
+      }
+      setPanStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    } else if (e.touches.length === 2 && !isReadOnly && lastTouchDistance) {
+      // Two finger pinch zoom
+      const distance = getTouchDistance(e.touches);
+      if (distance) {
+        const scale = distance / lastTouchDistance;
+        const newZoom = Math.max(0.1, Math.min(5, touchStartZoom * scale));
+        setImageZoom(newZoom);
+      }
+    }
+    e.preventDefault();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 0) {
+      setIsPanning(false);
+      setLastTouchDistance(null);
+    } else if (e.touches.length === 1) {
+      // One finger left, stop zoom but continue panning if needed
+      setLastTouchDistance(null);
+      if (!isReadOnly && imageZoom > 1) {
+        setIsPanning(true);
+        setPanStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      }
+    }
+  };
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor }}>
       {/* Main content area */}
@@ -294,6 +384,9 @@ export default function ImageWorkspace({
           onMouseDown={disablePanning ? undefined : handleMouseDown}
           onMouseUp={disablePanning ? undefined : handleMouseUp}
           onWheel={handleWheel}
+          onTouchStart={disablePanning ? undefined : handleTouchStart}
+          onTouchMove={disablePanning ? undefined : handleTouchMove}
+          onTouchEnd={disablePanning ? undefined : handleTouchEnd}
         >
           <div 
             ref={contentRef} 
@@ -377,14 +470,14 @@ export default function ImageWorkspace({
           />
         )}
         {imageSrc && !isReadOnly && (
-           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-80 bg-background/50 backdrop-blur-sm p-2 rounded-lg shadow-lg flex items-center gap-2">
+           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-72 md:w-80 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex items-center gap-2">
             <button 
               onClick={() => {
                 setImageZoom(prev => Math.max(0.1, prev - 0.1));
               }}
-              className="p-1 hover:bg-background/50 rounded"
+              className="p-2 md:p-1 hover:bg-background/50 rounded touch-manipulation"
             >
-              <ZoomOut className="h-4 w-4" />
+              <ZoomOut className="h-5 w-5 md:h-4 md:w-4" />
             </button>
             <Slider
                 value={[imageZoom]}
@@ -400,19 +493,19 @@ export default function ImageWorkspace({
               onClick={() => {
                 setImageZoom(prev => Math.min(5, prev + 0.1));
               }}
-              className="p-1 hover:bg-background/50 rounded"
+              className="p-2 md:p-1 hover:bg-background/50 rounded touch-manipulation"
             >
-              <ZoomIn className="h-4 w-4" />
+              <ZoomIn className="h-5 w-5 md:h-4 md:w-4" />
             </button>
             <button 
               onClick={() => {
                 setImageZoom(1);
                 setPanOffset({ x: 0, y: 0 });
               }}
-              className="p-1 hover:bg-background/50 rounded ml-2"
+              className="p-2 md:p-1 hover:bg-background/50 rounded ml-2 touch-manipulation"
               title="Fit to screen"
             >
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />
             </button>
            </div>
         )}

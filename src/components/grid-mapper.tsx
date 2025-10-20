@@ -102,8 +102,9 @@ export default function GridMapper({
   };
 
   return (
-    <div className="grid md:grid-cols-[350px_1fr] h-full" onClick={() => setClickedCoords(null)}>
-      <div className="border-r bg-card/50 backdrop-blur-sm">
+    <div className="flex flex-col md:grid md:grid-cols-[350px_1fr] h-full" onClick={() => setClickedCoords(null)}>
+      {/* Desktop Control Panel - Hidden on mobile */}
+      <div className="hidden md:block border-r bg-card/50 backdrop-blur-sm">
         <ControlPanel
           onImageUpload={onImageUpload}
           cellSize={cellSize}
@@ -138,7 +139,9 @@ export default function GridMapper({
           setMapName={setMapName}
         />
       </div>
-      <ImageWorkspace
+      {/* Image Workspace - Full width on mobile */}
+      <div className="flex-1 min-h-0">
+        <ImageWorkspace
         imageSrc={imageSrc}
         imageRef={imageRef}
         onImageLoad={onImageLoad}
@@ -168,7 +171,8 @@ export default function GridMapper({
         setImageZoom={setImageZoom}
         panOffset={panOffset}
         setPanOffset={setPanOffset}
-      />
+        />
+      </div>
     </div>
   );
 }

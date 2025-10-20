@@ -105,8 +105,8 @@ export default function ControlPanel({
   };
 
   return (
-    <div className="h-full w-full overflow-auto">
-      <div className="p-4 flex flex-col h-full">
+    <div className="h-full w-full overflow-auto mobile-scroll">
+      <div className="p-3 md:p-4 flex flex-col h-full">
         <div className="space-y-6 flex-1">
           <div className="hidden md:block">
             <h2 className="text-lg font-semibold tracking-tight">Controls</h2>
@@ -131,7 +131,7 @@ export default function ControlPanel({
             />
             <Button
               onClick={handleUploadClick}
-              className="w-full"
+              className="w-full h-11 md:h-10 touch-manipulation"
               variant="outline"
             >
               {hasImage ? 'Change Image' : 'Upload Image or PDF'}
@@ -161,6 +161,7 @@ export default function ControlPanel({
                         onChange={e => setSplitCols(Math.max(1, parseInt(e.target.value) || 1))}
                         min="1"
                         max="10"
+                        className="h-11 md:h-10 text-base md:text-sm"
                       />
                     </div>
                     <div className="space-y-2">
@@ -172,6 +173,7 @@ export default function ControlPanel({
                         onChange={e => setSplitRows(Math.max(1, parseInt(e.target.value) || 1))}
                         min="1"
                         max="10"
+                        className="h-11 md:h-10 text-base md:text-sm"
                       />
                     </div>
                   </div>
@@ -207,6 +209,7 @@ export default function ControlPanel({
                         max="500"
                         step="0.01"
                         placeholder="e.g. 28.5"
+                        className="h-11 md:h-10 text-base md:text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
                         Use decimals for micro-precision (e.g., 0.5mm for fine-tuning)

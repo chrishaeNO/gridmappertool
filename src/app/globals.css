@@ -82,3 +82,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Mobile-friendly touch targets */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on input focus on iOS */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+  
+  /* Improve scrolling on mobile */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Better tap highlights */
+  button, 
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Safe area support for mobile devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* Mobile bottom nav spacing */
+  .mobile-bottom-spacing {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
