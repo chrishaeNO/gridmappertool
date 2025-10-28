@@ -38,11 +38,19 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
+# Environment files
 .env
 .env.local
 .env.production
 .env.staging
+.env.development
+.env.test
 !.env.example
+
+# Backup files (NEVER commit these)
+*.backup
+.env.*backup
+.env.*.backup
 
 # firebase
 firebase-debug.log
