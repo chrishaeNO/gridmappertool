@@ -2,7 +2,7 @@
 
 import ImageWorkspace from '@/components/image-workspace';
 import { Skeleton } from '@/components/ui/skeleton';
-import Footer from '@/components/layout/footer';
+import FloatingInfoButton from '@/components/floating-info-button';
 import AccessCodeModal from '@/components/access-code-modal';
 import { use, useState, useEffect, useRef } from 'react';
 import { notFound } from 'next/navigation';
@@ -300,7 +300,7 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
           sliceImageSettings={mapData.sliceImageSettings}
         />
       </main>
-      <Footer />
+      <FloatingInfoButton />
       
       {/* Access Code Modal */}
       <AccessCodeModal

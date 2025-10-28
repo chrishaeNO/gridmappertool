@@ -3,8 +3,8 @@
 
 import {useState, useCallback, useRef, useEffect} from 'react';
 import Header from '@/components/layout/header';
-import Footer from '@/components/layout/footer';
 import GridMapper from '@/components/grid-mapper';
+import FloatingInfoButton from '@/components/floating-info-button';
 import {analyzeImageBrightness} from '@/ai/flows/analyze-image-brightness';
 import type {ImageDimensions} from '@/components/image-workspace';
 import JSZip from 'jszip';
@@ -993,7 +993,7 @@ function HomeContent() {
           onToggleShare={handleToggleShare}
         />
       )}
-      <Footer />
+      <FloatingInfoButton />
     </div>
   );
 }

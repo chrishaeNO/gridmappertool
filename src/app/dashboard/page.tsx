@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, PlusCircle, Edit, Trash2, Share2, Eye } from 'lucide-react';
-import Footer from '@/components/layout/footer';
+import FloatingInfoButton from '@/components/floating-info-button';
 import Header from '@/components/layout/header';
 import ShareModal from '@/components/share-modal';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                 ))}
             </div>
          </main>
-         <Footer />
+         <FloatingInfoButton />
        </div>
     );
   }
@@ -447,7 +447,7 @@ export default function DashboardPage() {
          isEditorPage={false}
        />
        
-       <Footer />
+       <FloatingInfoButton />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import Footer from '@/components/layout/footer';
+import FloatingInfoButton from '@/components/floating-info-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -262,8 +262,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <Footer />
+      <FloatingInfoButton />
     </div>
   );
 }
