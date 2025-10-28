@@ -2,6 +2,24 @@
 
 A powerful web application for creating interactive grid overlays on maps and images. Perfect for tabletop gaming, urban planning, cartography, and any scenario where you need precise grid-based measurements and coordinates.
 
+## 📸 Screenshots
+
+### Main Application Interface
+![Main Screen](screenshots/Main%20Screen.png)
+*Create and edit maps with intuitive grid controls and real-time preview*
+
+### Dashboard
+![Dashboard](screenshots/Dashboard.png)
+*Manage all your maps from a clean, organized dashboard*
+
+### Map Workspace
+![Map Screen](screenshots/Map%20Screen.png)
+*Advanced map editing with slice controls, zoom/pan, and precise grid positioning*
+
+### Map Sharing
+![Share Map Screen](screenshots/Share%20map%20screen.png)
+*Share your maps publicly with customizable access controls*
+
 ## 🚀 Features
 
 ### Core Functionality
