@@ -39,6 +39,16 @@ type ImageGridDisplayProps = {
   isReadOnly?: boolean;
   imageZoom: number;
   panOffset: { x: number; y: number };
+  sliceImageZoom?: number;
+  slicePanOffset?: { x: number; y: number };
+  onSliceImageSettingsChange?: (settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+  showReferencePoints?: boolean;
+  referenceColors?: {
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  };
 };
 
 const GridLines = React.memo(({ numCols, numRows, colWidth, rowHeight, strokeColor, strokeWidth }: any) => {
@@ -86,11 +96,25 @@ function ImageGridDisplay({
   onStartEditing,
   isReadOnly = false,
   imageZoom,
-  panOffset
+  panOffset,
+  sliceImageZoom,
+  slicePanOffset,
+  onSliceImageSettingsChange,
+  showReferencePoints = false,
+  referenceColors = {
+    top: '#ffffff',    // White
+    right: '#ff0000',  // Red
+    bottom: '#000000', // Black
+    left: '#01b050'    // Green (updated standard)
+  },
 }: ImageGridDisplayProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const isSplit = totalGrids.rows * totalGrids.cols > 1;
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragStartPanOffset, setDragStartPanOffset] = useState({ x: 0, y: 0 });
+  const [isAltPressed, setIsAltPressed] = useState(false);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -98,14 +122,53 @@ function ImageGridDisplay({
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Track Alt/Option key for drag mode indication
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && !isAltPressed) {
+        setIsAltPressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.altKey && isAltPressed) {
+        setIsAltPressed(false);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      setIsAltPressed(false);
+    };
+
+    if (!isReadOnly && isSplit) {
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      window.addEventListener('blur', handleWindowBlur);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isAltPressed, isReadOnly, isSplit]);
   
 
   const gridData = useMemo(() => {
-    if (!imageDimensions || cellSize <= 0) return null;
+    if (!imageDimensions || cellSize <= 0 || isNaN(cellSize)) return null;
     
     const { naturalWidth, naturalHeight } = imageDimensions;
+    
+    // Validate dimensions
+    if (!naturalWidth || !naturalHeight || isNaN(naturalWidth) || isNaN(naturalHeight)) return null;
+    
     const { rows: totalRows, cols: totalCols } = totalGrids;
     const { row: rowIndex, col: colIndex } = gridIndex;
+
+    // Validate grid parameters
+    if (!totalRows || !totalCols || isNaN(totalRows) || isNaN(totalCols) || totalRows <= 0 || totalCols <= 0) return null;
+    if (isNaN(rowIndex) || isNaN(colIndex) || rowIndex < 0 || colIndex < 0) return null;
 
     const sliceWidth = naturalWidth / totalCols;
     const sliceHeight = naturalHeight / totalRows;
@@ -113,8 +176,11 @@ function ImageGridDisplay({
     const sliceLeft = colIndex * sliceWidth;
     const sliceTop = rowIndex * sliceHeight;
 
-    const cellSizePx = unit === "px" ? cellSize : (cellSize / 25.4) * dpi;
-    if (cellSizePx <= 0) return null;
+    const cellSizePx = unit === "px" ? cellSize : (cellSize / 25.4) * (dpi || 96);
+    if (cellSizePx <= 0 || isNaN(cellSizePx)) return null;
+    
+    // Validate gridOffset
+    if (!gridOffset || isNaN(gridOffset.x) || isNaN(gridOffset.y)) return null;
     
     const gridStartXInSlice = gridOffset.x - sliceLeft;
     const gridStartYInSlice = gridOffset.y - sliceTop;
@@ -153,9 +219,22 @@ function ImageGridDisplay({
                      remainingWidth > cellThreshold || 
                      remainingHeight > cellThreshold;
     
+    // Final validation of calculated values
+    const finalNumCols = numCols + 1;
+    const finalNumRows = numRows + 1;
+    
+    if (isNaN(finalNumCols) || isNaN(finalNumRows) || isNaN(cellSizePx) || 
+        isNaN(firstColOffset) || isNaN(firstRowOffset)) {
+      console.warn('NaN values detected in grid calculations:', {
+        finalNumCols, finalNumRows, cellSizePx, firstColOffset, firstRowOffset,
+        cellSize, dpi, unit, gridOffset, imageDimensions
+      });
+      return null;
+    }
+    
     return {
-      numCols: numCols + 1,
-      numRows: numRows + 1,
+      numCols: finalNumCols,
+      numRows: finalNumRows,
       startColIndex,
       startRowIndex,
       colWidth: cellSizePx,
@@ -202,6 +281,72 @@ function ImageGridDisplay({
       if(isReadOnly) return;
       onSliceNameChange(inputRef.current?.value || sliceName);
     };
+
+    // Background image dragging handlers
+    const handleBackgroundMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isReadOnly || !isSplit || !onSliceImageSettingsChange) return;
+      
+      // Only start dragging if Alt/Option key is held down to avoid conflicts with grid clicking
+      if (!event.altKey) return;
+      
+      event.preventDefault();
+      event.stopPropagation();
+      
+      setIsDragging(true);
+      setDragStart({ x: event.clientX, y: event.clientY });
+      setDragStartPanOffset({ ...effectivePanOffset });
+      
+      // Change cursor to indicate dragging mode
+      document.body.style.cursor = 'grabbing';
+      
+      // Disable text selection during drag
+      document.body.style.userSelect = 'none';
+    };
+
+    const handleBackgroundMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isDragging || !onSliceImageSettingsChange) return;
+      
+      event.preventDefault();
+      
+      const deltaX = event.clientX - dragStart.x;
+      const deltaY = event.clientY - dragStart.y;
+      
+      const newPanOffset = {
+        x: dragStartPanOffset.x + deltaX,
+        y: dragStartPanOffset.y + deltaY
+      };
+      
+      onSliceImageSettingsChange({ panOffset: newPanOffset });
+    };
+
+    const handleBackgroundMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    // Global mouse up handler to stop dragging even if mouse leaves the component
+    useEffect(() => {
+      const handleGlobalMouseUp = () => {
+        if (isDragging) {
+          setIsDragging(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      };
+
+      if (isDragging) {
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+        document.addEventListener('mouseleave', handleGlobalMouseUp);
+      }
+
+      return () => {
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+        document.removeEventListener('mouseleave', handleGlobalMouseUp);
+      };
+    }, [isDragging]);
 
     const handleGridClick = (event: React.MouseEvent<HTMLDivElement>) => {
         if (!onCellClick) return;
@@ -302,8 +447,12 @@ function ImageGridDisplay({
 
     const shouldShowLabels = true; // Always show labels, even in read-only mode
 
-    const backgroundPositionX = `-${(sliceLeft * imageZoom) - panOffset.x}px`;
-    const backgroundPositionY = `-${(sliceTop * imageZoom) - panOffset.y}px`;
+    // Use slice-specific settings if available, otherwise fall back to global settings
+    const effectiveZoom = sliceImageZoom ?? imageZoom;
+    const effectivePanOffset = slicePanOffset ?? panOffset;
+    
+    const backgroundPositionX = `-${(sliceLeft * effectiveZoom) - effectivePanOffset.x}px`;
+    const backgroundPositionY = `-${(sliceTop * effectiveZoom) - effectivePanOffset.y}px`;
 
 
     return (
@@ -372,29 +521,50 @@ function ImageGridDisplay({
             })}
 
             <div 
-              className="absolute overflow-hidden" 
+              className={`absolute overflow-hidden ${!isReadOnly && isSplit && isAltPressed ? 'cursor-grab' : ''} ${isDragging ? 'cursor-grabbing' : ''}`}
               style={{ left: labelSize, top: labelSize, width: sliceWidth, height: sliceHeight }}
               onClick={handleGridClick}
+              onMouseDown={handleBackgroundMouseDown}
+              onMouseMove={handleBackgroundMouseMove}
+              onMouseUp={handleBackgroundMouseUp}
             >
+                {/* Alt/Option key indicator overlay */}
+                {!isReadOnly && isSplit && isAltPressed && !isDragging && (
+                  <div className="absolute inset-0 bg-blue-500/5 border-2 border-blue-500 border-dashed flex items-center justify-center pointer-events-none">
+                    <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                      Click + Drag to Move Background
+                    </div>
+                  </div>
+                )}
                 <div
-                    className="absolute pointer-events-none"
+                    className="absolute"
                     style={{
                         backgroundImage: `url(${imageSrc})`,
-                        backgroundSize: `${imageDimensions.naturalWidth * imageZoom}px ${imageDimensions.naturalHeight * imageZoom}px`,
+                        backgroundSize: `${imageDimensions.naturalWidth * effectiveZoom}px ${imageDimensions.naturalHeight * effectiveZoom}px`,
                         backgroundPosition: `${backgroundPositionX} ${backgroundPositionY}`,
                         left: 0,
                         top: 0,
                         width: `100%`,
                         height: `100%`,
+                        pointerEvents: isDragging ? 'none' : 'auto',
                     }}
                 />
+
+                {/* Drag overlay */}
+                {isDragging && (
+                  <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed flex items-center justify-center pointer-events-none">
+                    <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                      Dragging Background
+                    </div>
+                  </div>
+                )}
 
                 <svg
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     style={{
-                        transform: `translate(${gridLeft}px, ${gridTop}px)`,
-                        width: (numCols) * colWidth,
-                        height: (numRows) * rowHeight,
+                        transform: `translate(${isNaN(gridLeft) ? 0 : gridLeft}px, ${isNaN(gridTop) ? 0 : gridTop}px)`,
+                        width: isNaN(numCols * colWidth) ? 0 : (numCols * colWidth),
+                        height: isNaN(numRows * rowHeight) ? 0 : (numRows * rowHeight),
                     }}
                 >
                     <GridLines numCols={numCols} numRows={numRows} colWidth={colWidth} rowHeight={rowHeight} strokeColor={gridColor} strokeWidth={gridThickness} />
@@ -435,6 +605,73 @@ function ImageGridDisplay({
                 )}
             </div>
             {renderCenterCoord()}
+            
+            {/* Integrated Reference Points - rendered per slice with accurate positioning */}
+            {showReferencePoints && (
+                <div className="absolute pointer-events-none">
+                    {/* Calculate reference line positioning based on actual slice dimensions */}
+                    {(() => {
+                        const linePadding = Math.max(12, labelSize * 0.3); // Dynamic padding based on label size
+                        const lineThickness = Math.max(4, labelSize * 0.15); // Dynamic thickness
+                        const sliceContentWidth = sliceWidth + labelSize;
+                        const sliceContentHeight = sliceHeight + labelSize;
+                        
+                        return (
+                            <>
+                                {/* Top line - hvit */}
+                                <div 
+                                    className="absolute z-20"
+                                    style={{
+                                        left: `0px`,
+                                        top: `${-linePadding}px`,
+                                        width: `${sliceContentWidth}px`,
+                                        height: `${lineThickness}px`,
+                                        backgroundColor: referenceColors.top,
+                                        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                                {/* Right line - rød */}
+                                <div 
+                                    className="absolute z-20"
+                                    style={{
+                                        left: `${sliceContentWidth + linePadding}px`,
+                                        top: `0px`,
+                                        width: `${lineThickness}px`,
+                                        height: `${sliceContentHeight}px`,
+                                        backgroundColor: referenceColors.right,
+                                        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                                {/* Bottom line - sort */}
+                                <div 
+                                    className="absolute z-20"
+                                    style={{
+                                        left: `0px`,
+                                        top: `${sliceContentHeight + linePadding}px`,
+                                        width: `${sliceContentWidth}px`,
+                                        height: `${lineThickness}px`,
+                                        backgroundColor: referenceColors.bottom,
+                                        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                                {/* Left line - grønn */}
+                                <div 
+                                    className="absolute z-20"
+                                    style={{
+                                        left: `${-linePadding}px`,
+                                        top: `0px`,
+                                        width: `${lineThickness}px`,
+                                        height: `${sliceContentHeight}px`,
+                                        backgroundColor: referenceColors.left,
+                                        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                            </>
+                        );
+                    })()
+                    }
+                </div>
+            )}
         </div>
     );
 }

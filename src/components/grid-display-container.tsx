@@ -32,8 +32,22 @@ type GridDisplayContainerProps = {
     isReadOnly?: boolean;
     imageZoom: number;
     panOffset: { x: number; y: number };
+    sliceImageSettings?: {
+        [sliceIndex: number]: {
+            zoom: number;
+            panOffset: { x: number; y: number };
+        }
+    };
+    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
     clickedCoords?: { col: string; row: number } | null;
     onCellClick?: (coords: { col: string; row: number } | null) => void;
+    showReferencePoints?: boolean;
+    referenceColors?: {
+        top: string;
+        right: string;
+        bottom: string;
+        left: string;
+    };
 };
 
 const GridDisplayContainer = ({
@@ -64,8 +78,17 @@ const GridDisplayContainer = ({
     isReadOnly = false,
     imageZoom,
     panOffset,
+    sliceImageSettings,
+    onSliceImageSettingsChange,
     clickedCoords,
     onCellClick,
+    showReferencePoints = false,
+    referenceColors = {
+        top: '#ffffff',    // White
+        right: '#ff0000',  // Red
+        bottom: '#000000', // Black
+        left: '#01b050'    // Green (updated standard)
+    },
 }: GridDisplayContainerProps) => {
 
     if (!imageSrc || !imageDimensions) {
@@ -74,11 +97,17 @@ const GridDisplayContainer = ({
     
     const cellSizePx = unit === "px" ? cellSize : (cellSize / 25.4) * dpi;
     const labelSize = isReadOnly ? 0 : Math.min(25, cellSizePx * 0.4);
+    
+    // Calculate dynamic spacing and padding based on label size for reference lines
+    const referencePadding = splitCols * splitRows > 1 ? Math.max(12, labelSize * 0.3) : 0;
+    const sliceSpacing = splitCols * splitRows > 1 ? Math.max(40, referencePadding * 2) : 0;
 
     const grids = [];
     for (let row = 0; row < splitRows; row++) {
         for (let col = 0; col < splitCols; col++) {
             const sliceIndex = row * splitCols + col;
+            const sliceSettings = sliceImageSettings?.[sliceIndex];
+            
             grids.push(
                 <ImageGridDisplay
                     key={`${row}-${col}`}
@@ -111,6 +140,11 @@ const GridDisplayContainer = ({
                     isReadOnly={isReadOnly}
                     imageZoom={imageZoom}
                     panOffset={panOffset}
+                    sliceImageZoom={sliceSettings?.zoom}
+                    slicePanOffset={sliceSettings?.panOffset}
+                    onSliceImageSettingsChange={onSliceImageSettingsChange ? (settings) => onSliceImageSettingsChange(sliceIndex, settings) : undefined}
+                    showReferencePoints={showReferencePoints}
+                    referenceColors={referenceColors}
                 />
             );
         }
@@ -123,11 +157,15 @@ const GridDisplayContainer = ({
                 display: 'grid',
                 gridTemplateColumns: `repeat(${splitCols}, min-content)`,
                 gridTemplateRows: `repeat(${splitRows}, min-content)`,
-                width: imageDimensions.naturalWidth + (splitCols * labelSize),
-                height: imageDimensions.naturalHeight + (splitRows * labelSize),
+                gap: `${sliceSpacing}px`,
+                padding: splitCols * splitRows > 1 ? `${referencePadding + 6}px` : '0', // Dynamic padding based on reference line size
+                width: imageDimensions.naturalWidth + (splitCols * labelSize) + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0), // Dynamic width for reference lines
+                height: imageDimensions.naturalHeight + (splitRows * labelSize) + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0), // Dynamic height for reference lines
             }}
         >
             {grids}
+            
+            {/* Reference Points now rendered by individual ImageGridDisplay components */}
         </div>
     );
 };

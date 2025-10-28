@@ -53,6 +53,12 @@ function HomeContent() {
   const [mapName, setMapName] = useState('My Grid Map');
   const [imageZoom, setImageZoom] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [sliceImageSettings, setSliceImageSettings] = useState<{
+    [sliceIndex: number]: {
+      zoom: number;
+      panOffset: { x: number; y: number };
+    }
+  }>({});
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const [currentMapId, setCurrentMapId] = useState<string | null>(null);
   const [isMapSaved, setIsMapSaved] = useState(false);
@@ -60,6 +66,13 @@ function HomeContent() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showReferencePoints, setShowReferencePoints] = useState(false);
+  const [referenceColors, setReferenceColors] = useState({
+    top: '#ffffff',    // White
+    right: '#ff0000',  // Red
+    bottom: '#000000', // Black
+    left: '#01b050'    // Green (updated standard)
+  });
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
@@ -116,28 +129,56 @@ function HomeContent() {
           return;
         }
 
+        // Parse JSON fields from Prisma if they are strings
+        const parsedImageDimensions = typeof mapData.imageDimensions === 'string' 
+          ? JSON.parse(mapData.imageDimensions) 
+          : mapData.imageDimensions;
+        const parsedGridOffset = typeof mapData.gridOffset === 'string' 
+          ? JSON.parse(mapData.gridOffset) 
+          : mapData.gridOffset;
+        const parsedPanOffset = typeof mapData.panOffset === 'string' 
+          ? JSON.parse(mapData.panOffset) 
+          : mapData.panOffset;
+        const parsedSliceNames = typeof mapData.sliceNames === 'string' 
+          ? JSON.parse(mapData.sliceNames) 
+          : mapData.sliceNames;
+        const parsedReferenceColors = typeof mapData.referenceColors === 'string' 
+          ? JSON.parse(mapData.referenceColors) 
+          : mapData.referenceColors;
+        const parsedSliceImageSettings = typeof mapData.sliceImageSettings === 'string' 
+          ? JSON.parse(mapData.sliceImageSettings) 
+          : mapData.sliceImageSettings;
+
         // Load map data into state
         setCurrentMapId(editId);
         setMapName(mapData.name || 'My Grid Map');
         setImageSrc(mapData.imageSrc || null);
-        setImageDimensions(mapData.imageDimensions || null);
+        setImageDimensions(parsedImageDimensions || null);
         setCellSize(mapData.cellSize || 50);
         setUnit(mapData.unit || 'px');
         setDpi(mapData.dpi || 96);
-        setGridOffset(mapData.gridOffset || { x: 0, y: 0 });
+        setGridOffset(parsedGridOffset || { x: 0, y: 0 });
         setGridColor(mapData.gridColor || '#000000');
         setLabelColor(mapData.labelColor || '#000000');
         setBackgroundColor(mapData.backgroundColor || '#ffffff');
         setGridThickness(mapData.gridThickness || 1);
         setSplitCols(mapData.splitCols || 1);
         setSplitRows(mapData.splitRows || 1);
-        setSliceNames(mapData.sliceNames || ['Slice 1']);
+        setSliceNames(parsedSliceNames || ['Slice 1']);
         setShowCenterCoords(mapData.showCenterCoords || false);
         setShowScaleBar(mapData.showScaleBar || true);
         setImageZoom(mapData.imageZoom || 1);
-        setPanOffset(mapData.panOffset || { x: 0, y: 0 });
+        setPanOffset(parsedPanOffset || { x: 0, y: 0 });
         setIsShared(mapData.shared || false);
         setAccessCode(mapData.accessCode || null);
+        setShowReferencePoints(mapData.showReferencePoints || false);
+        setReferenceColors(parsedReferenceColors || {
+          top: '#ffffff',
+          right: '#ff0000',
+          bottom: '#000000',
+          left: '#01b050'
+        });
+        setSliceImageSettings(parsedSliceImageSettings || {});
         setIsMapSaved(true);
 
         toast({
@@ -269,6 +310,36 @@ function HomeContent() {
       }
   }
 
+  // Functions for handling slice-specific image settings
+  const getSliceImageSettings = (sliceIndex: number) => {
+    return sliceImageSettings[sliceIndex] || {
+      zoom: imageZoom,
+      panOffset: { ...panOffset }
+    };
+  };
+
+  const updateSliceImageSettings = (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => {
+    setSliceImageSettings(prev => ({
+      ...prev,
+      [sliceIndex]: {
+        zoom: settings.zoom ?? prev[sliceIndex]?.zoom ?? imageZoom,
+        panOffset: settings.panOffset ?? prev[sliceIndex]?.panOffset ?? { ...panOffset }
+      }
+    }));
+  };
+
+  const resetSliceImageSettings = (sliceIndex: number) => {
+    setSliceImageSettings(prev => {
+      const newSettings = { ...prev };
+      delete newSettings[sliceIndex];
+      return newSettings;
+    });
+  };
+
+  const resetAllSliceImageSettings = () => {
+    setSliceImageSettings({});
+  };
+
   const handleImageUpload = (file: File) => {
     setImageFile(file);
     const reader = new FileReader();
@@ -374,7 +445,10 @@ function HomeContent() {
         showScaleBar,
         imageZoom,
         panOffset,
+        sliceImageSettings,
         shared: isShared,
+        showReferencePoints,
+        referenceColors,
       };
 
       if (currentMapId) {
@@ -389,7 +463,10 @@ function HomeContent() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to update map');
+          const errorData = await response.text();
+          console.error('Update failed - Status:', response.status);
+          console.error('Update failed - Response:', errorData);
+          throw new Error(`Failed to update map: ${response.status} - ${errorData}`);
         }
 
         toast({
@@ -408,7 +485,10 @@ function HomeContent() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to save map');
+          const errorData = await response.text();
+          console.error('Save failed - Status:', response.status);
+          console.error('Save failed - Response:', errorData);
+          throw new Error(`Failed to save map: ${response.status} - ${errorData}`);
         }
 
         const newMap = await response.json();
@@ -448,6 +528,9 @@ function HomeContent() {
   };
 
   const handleNewMap = () => {
+    // Clear URL parameters (remove edit parameter and map ID)
+    router.push('/');
+    
     // Reset all state to create a new map
     setImageSrc(null);
     setImageFile(null);
@@ -474,6 +557,13 @@ function HomeContent() {
     setIsMapSaved(false);
     setIsShared(false);
     setAccessCode(null);
+    setShowReferencePoints(false);
+    setReferenceColors({
+      top: '#ffffff',
+      right: '#ff0000',
+      bottom: '#000000',
+      left: '#01b050'
+    });
     
     toast({
       title: 'New Map Created',
@@ -492,8 +582,35 @@ function HomeContent() {
         },
         credentials: 'include',
         body: JSON.stringify({
+          name: mapName,
+          imageSrc,
+          ...(imageFile && {
+            imageFile: {
+              name: imageFile.name,
+              size: imageFile.size,
+              type: imageFile.type,
+            },
+          }),
+          imageDimensions,
+          cellSize,
+          unit,
+          dpi,
+          gridOffset,
+          gridColor,
+          labelColor,
+          backgroundColor,
+          gridThickness,
+          splitCols,
+          splitRows,
+          sliceNames,
+          showCenterCoords,
+          showScaleBar,
+          imageZoom,
+          panOffset,
           shared,
           accessCode,
+          showReferencePoints,
+          referenceColors,
         }),
       });
 
@@ -565,20 +682,73 @@ function HomeContent() {
           const tempCtx = tempCanvas.getContext('2d');
           if (!tempCtx) continue;
           
-          tempCanvas.width = scaledSliceWidth + exportLabelSize;
-          tempCanvas.height = scaledSliceHeight + exportLabelSize;
+          // Calculate extra space needed for reference lines
+          let extraWidth = 0;
+          let extraHeight = 0;
+          let linePadding = 0;
+          
+          if (showReferencePoints) {
+            linePadding = 15 * scale; // Nøyaktig 15px som på skjermen
+            const lineThickness = 8 * scale; // Nøyaktig 8px som på skjermen
+            extraWidth = linePadding + lineThickness; // Kun høyre margin
+            extraHeight = linePadding + lineThickness; // Kun bunn margin
+          }
+          
+          tempCanvas.width = scaledSliceWidth + exportLabelSize + extraWidth;
+          tempCanvas.height = scaledSliceHeight + exportLabelSize + extraHeight;
           
           tempCtx.fillStyle = backgroundColor;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           
+          // Get slice-specific settings or use global settings
+          const sliceSettings = sliceImageSettings[sliceIndex];
+          const effectiveZoom = sliceSettings?.zoom ?? imageZoom;
+          const effectivePanOffset = sliceSettings?.panOffset ?? panOffset;
+          
           const sliceX = col * sliceWidth;
           const sliceY = row * sliceHeight;
 
-          tempCtx.drawImage(
-              img,
-              sliceX, sliceY, sliceWidth, sliceHeight,
-              exportLabelSize, exportLabelSize, scaledSliceWidth, scaledSliceHeight
-          );
+          // Offset image position to account for reference line margins
+          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
+          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : 0);
+          
+          // For slice-specific settings, we need to draw the image differently
+          if (sliceSettings && (sliceSettings.zoom !== imageZoom || 
+              sliceSettings.panOffset?.x !== panOffset.x || 
+              sliceSettings.panOffset?.y !== panOffset.y)) {
+            
+            // Set up clipping for this slice area
+            tempCtx.save();
+            tempCtx.beginPath();
+            tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
+            tempCtx.clip();
+            
+            // Calculate what part of the original image to show based on slice settings
+            // This mimics the CSS background-position behavior
+            const scaledImageWidth = naturalWidth * effectiveZoom;
+            const scaledImageHeight = naturalHeight * effectiveZoom;
+            
+            // Calculate the position offset
+            const backgroundPosX = -((sliceX * effectiveZoom) - effectivePanOffset.x);
+            const backgroundPosY = -((sliceY * effectiveZoom) - effectivePanOffset.y);
+            
+            // Draw the full scaled image at the calculated position
+            tempCtx.drawImage(
+                img,
+                0, 0, naturalWidth, naturalHeight,
+                imageOffsetX + (backgroundPosX * scale), imageOffsetY + (backgroundPosY * scale),
+                scaledImageWidth * scale, scaledImageHeight * scale
+            );
+            
+            tempCtx.restore();
+          } else {
+            // Standard slice drawing without custom settings
+            tempCtx.drawImage(
+                img,
+                sliceX, sliceY, sliceWidth, sliceHeight,
+                imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight
+            );
+          }
           
           const scaledGridOffsetX = gridOffset.x * scale;
           const scaledGridOffsetY = gridOffset.y * scale;
@@ -603,10 +773,10 @@ function HomeContent() {
           
           tempCtx.save();
           tempCtx.beginPath();
-          tempCtx.rect(exportLabelSize, exportLabelSize, scaledSliceWidth, scaledSliceHeight);
+          tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
           tempCtx.clip();
           
-          tempCtx.translate(exportLabelSize, exportLabelSize);
+          tempCtx.translate(imageOffsetX, imageOffsetY);
 
           tempCtx.strokeStyle = gridColor;
           tempCtx.lineWidth = gridThickness * scale;
@@ -644,7 +814,7 @@ function HomeContent() {
                 if (xOnSlice >= -scaledCellSize && xOnSlice <= scaledSliceWidth) {
                     const char = String.fromCharCode(65 + startColIndex + i);
                     // Sentrert over cellen - midt i cellen
-                    tempCtx.fillText(char, exportLabelSize + xOnSlice + scaledCellSize / 2, exportLabelSize / 2);
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : 0) + exportLabelSize / 2);
                 }
             }
             
@@ -654,9 +824,32 @@ function HomeContent() {
                 if (yOnSlice >= -scaledCellSize && yOnSlice <= scaledSliceHeight) {
                     const numLabel = startRowIndex + i + 1;
                     // Sentrert i forhold til cellen - midt i cellen
-                    tempCtx.fillText(numLabel.toString(), exportLabelSize / 2, exportLabelSize + yOnSlice + scaledCellSize / 2);
+                    tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
                 }
             }
+          }
+          
+          // Add reference lines if enabled - INNENFOR canvas
+          if (showReferencePoints) {
+            const lineThickness = 8 * scale; // Fast tykkelse som på skjermen
+            const sliceContentWidth = scaledSliceWidth + exportLabelSize; // 520px på skjermen
+            const sliceContentHeight = scaledSliceHeight + exportLabelSize; // 520px på skjermen
+            
+            // Top line: OVER labels
+            tempCtx.fillStyle = referenceColors.top;
+            tempCtx.fillRect(exportLabelSize, 0, scaledSliceWidth, lineThickness);
+            
+            // Right line: TIL HØYRE for slice-innholdet
+            tempCtx.fillStyle = referenceColors.right;
+            tempCtx.fillRect(exportLabelSize + scaledSliceWidth + linePadding, exportLabelSize, lineThickness, scaledSliceHeight);
+            
+            // Bottom line: UNDER slice-innholdet
+            tempCtx.fillStyle = referenceColors.bottom;
+            tempCtx.fillRect(exportLabelSize, exportLabelSize + scaledSliceHeight + linePadding, scaledSliceWidth, lineThickness);
+            
+            // Left line: TIL VENSTRE for labels
+            tempCtx.fillStyle = referenceColors.left;
+            tempCtx.fillRect(0, exportLabelSize, lineThickness, scaledSliceHeight);
           }
           
           const blob = await new Promise<Blob | null>(resolve => tempCanvas.toBlob(resolve, 'image/jpeg', 0.9));
@@ -696,11 +889,14 @@ function HomeContent() {
     gridThickness,
     splitCols,
     splitRows,
-    sliceNames
+    sliceNames,
+    showReferencePoints,
+    referenceColors,
+    mapName
   ]);
 
   const gridMapperProps: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'> = {
-    cellSize, setCellSize, unit, setUnit, dpi, setDpi, gridColor, setGridColor, labelColor, setLabelColor, backgroundColor, setBackgroundColor, gridThickness, setGridThickness, splitCols, setSplitCols, splitRows, setSplitRows, sliceNames, setSliceNames, showCenterCoords, setShowCenterCoords, showScaleBar, setShowScaleBar, isGridCropped, onGridCropChange: setIsGridCropped, selectedSliceIndex, setSelectedSliceIndex, mapName, setMapName, imageZoom, setImageZoom, panOffset, setPanOffset
+    cellSize, setCellSize, unit, setUnit, dpi, setDpi, gridColor, setGridColor, labelColor, setLabelColor, backgroundColor, setBackgroundColor, gridThickness, setGridThickness, splitCols, setSplitCols, splitRows, setSplitRows, sliceNames, setSliceNames, showCenterCoords, setShowCenterCoords, showScaleBar, setShowScaleBar, isGridCropped, onGridCropChange: setIsGridCropped, selectedSliceIndex, setSelectedSliceIndex, mapName, setMapName, imageZoom, setImageZoom, panOffset, setPanOffset, sliceImageSettings, onSliceImageSettingsChange: updateSliceImageSettings, onResetSliceSettings: resetSliceImageSettings, onResetAllSliceSettings: resetAllSliceImageSettings
   };
 
   return (
@@ -716,14 +912,19 @@ function HomeContent() {
         isMobileSheetOpen={isMobileSheetOpen}
         setMobileSheetOpen={setIsMobileSheetOpen}
         onMobileControlsToggle={() => setIsMobileSheetOpen(true)}
+        showReferencePoints={showReferencePoints}
+        onToggleReferencePoints={setShowReferencePoints}
       />
-      <main className="flex-1 overflow-auto mobile-bottom-spacing md:pb-0">
+      <main className="flex-1 overflow-hidden mobile-bottom-spacing md:pb-0">
         <GridMapper
           imageSrc={imageSrc}
           imageDimensions={imageDimensions}
           onImageUpload={handleImageUpload}
           onImageLoad={setImageDimensions}
           gridOffset={gridOffset}
+          showReferencePoints={showReferencePoints}
+          referenceColors={referenceColors}
+          setReferenceColors={setReferenceColors}
           {...gridMapperProps}
         />
       </main>
@@ -740,16 +941,20 @@ function HomeContent() {
       
       {/* Mobile Controls Sheet */}
       <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
-        <SheetContent side="left" className="p-0 w-full max-w-sm">
+        <SheetContent side="left" className="p-0 w-full max-w-sm flex flex-col h-full">
           <SheetHeader className="p-4 border-b">
             <SheetTitle>Controls</SheetTitle>
             <SheetDescription>
               Adjust your image and grid settings here.
             </SheetDescription>
           </SheetHeader>
-          <ControlPanel
+          <div className="flex-1 overflow-hidden">
+            <ControlPanel
             onImageUpload={handleImageUpload}
             hasImage={!!imageSrc}
+            showReferencePoints={showReferencePoints}
+            referenceColors={referenceColors}
+            setReferenceColors={setReferenceColors}
             {...gridMapperProps}
             setSliceNames={(index: number, newName: string) => {
               const newSliceNames = [...sliceNames];
@@ -757,6 +962,7 @@ function HomeContent() {
               setSliceNames(newSliceNames);
             }}
           />
+          </div>
         </SheetContent>
       </Sheet>
       

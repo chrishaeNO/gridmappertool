@@ -45,6 +45,28 @@ export type GridMapperProps = {
     setImageZoom: Dispatch<SetStateAction<number>>;
     panOffset: { x: number; y: number };
     setPanOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
+    sliceImageSettings?: {
+        [sliceIndex: number]: {
+            zoom: number;
+            panOffset: { x: number; y: number };
+        }
+    };
+    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+    onResetSliceSettings?: (sliceIndex: number) => void;
+    onResetAllSliceSettings?: () => void;
+    showReferencePoints?: boolean;
+    referenceColors?: {
+        top: string;
+        right: string;
+        bottom: string;
+        left: string;
+    };
+    setReferenceColors?: Dispatch<SetStateAction<{
+        top: string;
+        right: string;
+        bottom: string;
+        left: string;
+    }>>;
 };
 
 export default function GridMapper({
@@ -87,6 +109,13 @@ export default function GridMapper({
     setImageZoom,
     panOffset,
     setPanOffset,
+    sliceImageSettings,
+    onSliceImageSettingsChange,
+    onResetSliceSettings,
+    onResetAllSliceSettings,
+    showReferencePoints,
+    referenceColors,
+    setReferenceColors,
 }: GridMapperProps) {
   const [clickedCoords, setClickedCoords] = useState<{
     col: string;
@@ -104,7 +133,7 @@ export default function GridMapper({
   return (
     <div className="flex flex-col md:grid md:grid-cols-[350px_1fr] h-full" onClick={() => setClickedCoords(null)}>
       {/* Desktop Control Panel - Hidden on mobile */}
-      <div className="hidden md:block border-r bg-card/50 backdrop-blur-sm">
+      <div className="hidden md:block border-r bg-card/50 backdrop-blur-sm h-full overflow-hidden">
         <ControlPanel
           onImageUpload={onImageUpload}
           cellSize={cellSize}
@@ -137,6 +166,15 @@ export default function GridMapper({
           setSelectedSliceIndex={setSelectedSliceIndex}
           mapName={mapName}
           setMapName={setMapName}
+          showReferencePoints={showReferencePoints}
+          referenceColors={referenceColors}
+          setReferenceColors={setReferenceColors}
+          sliceImageSettings={sliceImageSettings}
+          globalImageZoom={imageZoom}
+          globalPanOffset={panOffset}
+          onSliceImageSettingsChange={onSliceImageSettingsChange}
+          onResetSliceSettings={onResetSliceSettings}
+          onResetAllSliceSettings={onResetAllSliceSettings}
         />
       </div>
       {/* Image Workspace - Full width on mobile */}
@@ -171,6 +209,11 @@ export default function GridMapper({
         setImageZoom={setImageZoom}
         panOffset={panOffset}
         setPanOffset={setPanOffset}
+        sliceImageSettings={sliceImageSettings}
+        onSliceImageSettingsChange={onSliceImageSettingsChange}
+        showReferencePoints={showReferencePoints}
+        referenceColors={referenceColors}
+        setReferenceColors={setReferenceColors}
         />
       </div>
     </div>

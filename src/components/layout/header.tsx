@@ -1,4 +1,4 @@
-import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus } from "lucide-react";
+import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import UserAvatar from "@/components/user-avatar";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
@@ -36,6 +38,8 @@ type HeaderProps = {
   isMobileSheetOpen?: boolean;
   setMobileSheetOpen?: Dispatch<SetStateAction<boolean>>;
   onMobileControlsToggle?: () => void;
+  showReferencePoints?: boolean;
+  onToggleReferencePoints?: (enabled: boolean) => void;
 };
 
 function AuthActions() {
@@ -85,7 +89,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -175,6 +179,22 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
             New Gridmap
           </Button>
         )}
+        
+        {/* Reference Points Toggle - Only show when image is loaded */}
+        {hasImage && onToggleReferencePoints && (
+          <div className="hidden md:flex items-center space-x-2 px-3 py-2 border rounded-md bg-background">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="reference-points" className="text-sm font-medium cursor-pointer">
+              Reference Points
+            </Label>
+            <Switch
+              id="reference-points"
+              checked={showReferencePoints || false}
+              onCheckedChange={onToggleReferencePoints}
+            />
+          </div>
+        )}
+        
         {isEditorPage && onShare && onExport && onSave &&(
             <>
                 <Button onClick={onSave} disabled={!hasImage} variant="outline" className="hidden md:inline-flex">

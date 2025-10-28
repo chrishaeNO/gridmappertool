@@ -24,6 +24,7 @@ import {UploadCloud, Palette, Grid, Eye, AlertTriangle, CheckCircle2, FileText, 
 import { Switch } from "@/components/ui/switch";
 import type {Dispatch, SetStateAction} from 'react';
 import { cn } from "@/lib/utils";
+import SliceImageControls from './slice-image-controls';
 
 type ControlPanelProps = {
   onImageUpload: (file: File) => void;
@@ -57,6 +58,30 @@ type ControlPanelProps = {
   setSelectedSliceIndex: Dispatch<SetStateAction<number | null>>;
   mapName: string;
   setMapName: Dispatch<SetStateAction<string>>;
+  showReferencePoints?: boolean;
+  referenceColors?: {
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  };
+  setReferenceColors?: Dispatch<SetStateAction<{
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  }>>;
+  sliceImageSettings?: {
+    [sliceIndex: number]: {
+      zoom: number;
+      panOffset: { x: number; y: number };
+    }
+  };
+  globalImageZoom?: number;
+  globalPanOffset?: { x: number; y: number };
+  onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+  onResetSliceSettings?: (sliceIndex: number) => void;
+  onResetAllSliceSettings?: () => void;
 };
 
 export default function ControlPanel({
@@ -91,6 +116,15 @@ export default function ControlPanel({
   setSelectedSliceIndex,
   mapName,
   setMapName,
+  showReferencePoints,
+  referenceColors,
+  setReferenceColors,
+  sliceImageSettings,
+  globalImageZoom = 1,
+  globalPanOffset = { x: 0, y: 0 },
+  onSliceImageSettingsChange,
+  onResetSliceSettings,
+  onResetAllSliceSettings,
 }: ControlPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,8 +139,8 @@ export default function ControlPanel({
   };
 
   return (
-    <div className="h-full w-full overflow-auto mobile-scroll">
-      <div className="p-3 md:p-4 flex flex-col h-full">
+    <div className="h-full w-full flex flex-col">
+      <div className="p-3 md:p-4 flex flex-col h-full overflow-y-auto mobile-scroll">
         <div className="space-y-6 flex-1">
           <div className="hidden md:block">
             <h2 className="text-lg font-semibold tracking-tight">Controls</h2>
@@ -329,7 +363,81 @@ export default function ControlPanel({
                 </AccordionContent>
               </AccordionItem>
 
+              {/* Reference Points Section */}
+              {showReferencePoints && referenceColors && setReferenceColors && (
+                <AccordionItem value="reference-points">
+                  <AccordionTrigger className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-primary/10">
+                        <Palette className="h-4 w-4 text-primary" />
+                      </div>
+                      Reference Points Colors
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-top-color">Top</Label>
+                        <Input
+                          id="ref-top-color"
+                          type="color"
+                          value={referenceColors.top}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, top: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-right-color">Right</Label>
+                        <Input
+                          id="ref-right-color"
+                          type="color"
+                          value={referenceColors.right}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, right: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-bottom-color">Bottom</Label>
+                        <Input
+                          id="ref-bottom-color"
+                          type="color"
+                          value={referenceColors.bottom}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, bottom: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-left-color">Left</Label>
+                        <Input
+                          id="ref-left-color"
+                          type="color"
+                          value={referenceColors.left}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, left: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
             </Accordion>
+          )}
+
+          {/* Slice Image Controls - Only show when map splitting is enabled */}
+          {hasImage && splitCols * splitRows > 1 && (
+            <div className="mt-4">
+              <SliceImageControls
+                selectedSliceIndex={selectedSliceIndex}
+                sliceNames={sliceNames}
+                sliceImageSettings={sliceImageSettings}
+                globalImageZoom={globalImageZoom}
+                globalPanOffset={globalPanOffset}
+                onSliceImageSettingsChange={onSliceImageSettingsChange}
+                onResetSliceSettings={onResetSliceSettings}
+                onResetAllSliceSettings={onResetAllSliceSettings}
+              />
+            </div>
           )}
         </div>
       </div>

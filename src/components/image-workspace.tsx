@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import Image from "next/image";
-import { UploadCloud, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { UploadCloud, ZoomIn, ZoomOut, Maximize2, Palette, RotateCcw } from "lucide-react";
 import GridDisplayContainer from './grid-display-container';
 import ImageGridDisplay from './image-grid-display';
 import ScaleBar from './scale-bar';
 import { Slider } from "@/components/ui/slider";
+import './shared-map-styles.css';
 import { cn } from "@/lib/utils";
 
 export type ImageDimensions = {
@@ -42,9 +42,29 @@ type ImageWorkspaceProps = {
   setImageZoom: Dispatch<SetStateAction<number>>;
   panOffset: { x: number; y: number };
   setPanOffset: Dispatch<SetStateAction<{ x: number; y: number }>>;
+  sliceImageSettings?: {
+    [sliceIndex: number]: {
+      zoom: number;
+      panOffset: { x: number; y: number };
+    }
+  };
+  onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
   clickedCoords?: { col: string; row: number } | null;
   onCellClick?: (coords: { col: string; row: number } | null) => void;
   disablePanning?: boolean;
+  showReferencePoints?: boolean;
+  referenceColors?: {
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  };
+  setReferenceColors?: Dispatch<SetStateAction<{
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  }>>;
 };
 
 export default function ImageWorkspace({
@@ -76,42 +96,79 @@ export default function ImageWorkspace({
   setImageZoom,
   panOffset,
   setPanOffset,
+  sliceImageSettings,
+  onSliceImageSettingsChange,
   clickedCoords,
   onCellClick,
   disablePanning = false,
+  showReferencePoints = false,
+  referenceColors = {
+    top: '#ffffff',    // White
+    right: '#ff0000',  // Red
+    bottom: '#000000', // Black
+    left: '#01b050'    // Green (updated standard)
+  },
+  setReferenceColors,
 }: ImageWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const contentRef = useRef<HTMLDivElement>(null);
   const [editingSliceIndex, setEditingSliceIndex] = useState<number | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [localReferenceColors, setLocalReferenceColors] = useState(referenceColors);
+  
+  // Sync local colors with props changes
+  useEffect(() => {
+    setLocalReferenceColors(referenceColors);
+  }, [referenceColors]);
+  
+  // Close color picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showColorPicker && !(event.target as Element)?.closest('.color-picker-container')) {
+        setShowColorPicker(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColorPicker]);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
   const [touchStartZoom, setTouchStartZoom] = useState<number>(1);
 
   const fitAndCenter = useCallback(() => {
-    if (!imageDimensions || !containerRef.current || isReadOnly) {
-        // For delte kart, ikke gjør noe - hold scale på 1
-        if (!isReadOnly) {
-          setScale(1);
-        }
+    if (!imageDimensions || !containerRef.current) {
+        return;
+    };
+    
+    // For shared maps (isReadOnly), don't auto-scale - let users scroll instead
+    if (isReadOnly) {
+        setScale(1);
         return;
     };
     
     const cellSizePx = unit === 'px' ? cellSize : (cellSize / 25.4) * dpi;
-    const labelSize = Math.min(25, cellSizePx * 0.4);
+    const labelSize = isReadOnly ? 0 : Math.min(25, cellSizePx * 0.4); // No labels on shared maps
+    const sliceSpacing = splitCols * splitRows > 1 ? 60 : 0; // Space between slices (increased for better separation)
 
-    const contentWidth = imageDimensions.naturalWidth + splitCols * labelSize;
-    const contentHeight = imageDimensions.naturalHeight + splitRows * labelSize;
+    const contentWidth = imageDimensions.naturalWidth + splitCols * labelSize + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for left/right reference lines + padding for right edge
+    const contentHeight = imageDimensions.naturalHeight + splitRows * labelSize + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for top/bottom reference lines + padding for bottom edge
     
     const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
     
-    const scaleX = (containerWidth - 32) / contentWidth;
-    const scaleY = (containerHeight - 32) / contentHeight;
+    // Reserve space for bottom controls if they exist, otherwise just padding
+    const hasBottomControls = showScaleBar || (!isReadOnly && showReferencePoints) || !isReadOnly;
+    const availableHeight = containerHeight - (hasBottomControls ? (showScaleBar ? 100 : 80) : 20);
+    const availableWidth = containerWidth - 40;
+    
+    const scaleX = availableWidth / contentWidth;
+    const scaleY = availableHeight / contentHeight;
     const newScale = Math.min(scaleX, scaleY, 1);
     
     setScale(newScale);
-  }, [imageDimensions, containerRef, splitCols, splitRows, cellSize, unit, dpi, isReadOnly]);
+  }, [imageDimensions, containerRef, splitCols, splitRows, cellSize, unit, dpi, isReadOnly, showScaleBar]);
   
   useEffect(() => {
       fitAndCenter();
@@ -197,12 +254,13 @@ export default function ImageWorkspace({
 
     const sliceWidth = imageDimensions.naturalWidth / splitCols;
     const sliceHeight = imageDimensions.naturalHeight / splitRows;
+    const sliceSpacing = splitCols * splitRows > 1 ? 60 : 0; // Space between slices (increased for better separation)
 
-    const sliceCol = Math.floor(mouseXInContent / (sliceWidth + labelSize));
-    const sliceRow = Math.floor(mouseYInContent / (sliceHeight + labelSize));
+    const sliceCol = Math.floor(mouseXInContent / (sliceWidth + labelSize + sliceSpacing));
+    const sliceRow = Math.floor(mouseYInContent / (sliceHeight + labelSize + sliceSpacing));
     
-    const xInSlice = (mouseXInContent % (sliceWidth + labelSize)) - labelSize;
-    const yInSlice = (mouseYInContent % (sliceHeight + labelSize)) - labelSize;
+    const xInSlice = (mouseXInContent % (sliceWidth + labelSize + sliceSpacing)) - labelSize;
+    const yInSlice = (mouseYInContent % (sliceHeight + labelSize + sliceSpacing)) - labelSize;
     
     if (xInSlice < 0 || yInSlice < 0) {
         onHover(null);
@@ -370,15 +428,18 @@ export default function ImageWorkspace({
     }
   };
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor }}>
-      {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Image workspace */}
+    <div className="h-full w-full flex flex-col relative" style={{ backgroundColor }}>
+      {/* Main content area - uses full available space */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Image workspace - professional full-screen layout */}
         <div
           ref={containerRef}
-          className={cn("flex-1 flex items-center justify-center p-4 md:p-8 relative", 
-            isReadOnly ? "overflow-hidden" : "overflow-auto",
+          className={cn("absolute inset-0", 
+            isReadOnly ? "shared-map-container scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent" : "overflow-auto flex items-center justify-center",
             disablePanning ? '' : (isPanning ? 'cursor-grabbing' : (isReadOnly ? '' : (imageZoom > 1 ? 'cursor-grab' : ''))))}
+          style={{ 
+            paddingBottom: showScaleBar ? '80px' : '20px'
+          }}
           onMouseMove={disablePanning ? undefined : handleMouseMove}
           onMouseLeave={disablePanning ? undefined : handleMouseLeave}
           onMouseDown={disablePanning ? undefined : handleMouseDown}
@@ -390,7 +451,10 @@ export default function ImageWorkspace({
         >
           <div 
             ref={contentRef} 
-            style={{transform: isReadOnly ? 'scale(1)' : `scale(${scale})`}}
+            className={isReadOnly ? "shared-map-content" : ""}
+            style={{
+              transform: isReadOnly ? 'scale(1)' : `scale(${scale})`
+            }}
             onClick={(e) => {
                if (e.target === e.currentTarget) {
                   setSelectedSliceIndex(null);
@@ -399,42 +463,50 @@ export default function ImageWorkspace({
             }}
           >
             {imageSrc && imageDimensions ? (
-                <GridDisplayContainer
-                    imageSrc={imageSrc}
-                    imageDimensions={imageDimensions}
-                    imageRef={imageRef}
-                    onImageLoad={onImageLoad}
-                    cellSize={cellSize}
-                    unit={unit}
-                    dpi={dpi}
-                    gridOffset={gridOffset}
-                    onHover={onHover}
-                    hoveredCoords={hoveredCoords}
-                    clickedCoords={clickedCoords}
-                    onCellClick={onCellClick}
-                    gridColor={gridColor}
-                    labelColor={labelColor}
-                    gridThickness={gridThickness}
-                    containerRef={containerRef}
-                    splitCols={splitCols}
-                    splitRows={splitRows}
-                    showCenterCoords={showCenterCoords}
-                    onGridCropChange={onGridCropChange}
-                    sliceNames={sliceNames}
-                    onSliceNameChange={handleSliceNameChange}
-                    selectedSliceIndex={selectedSliceIndex}
-                    onSliceClick={handleSliceClick}
-                    editingSliceIndex={editingSliceIndex}
-                    onStartEditing={handleStartEditing}
-                    isReadOnly={isReadOnly}
-                    imageZoom={imageZoom}
-                    panOffset={panOffset}
-                />
+                <>
+                  <GridDisplayContainer
+                      imageSrc={imageSrc}
+                      imageDimensions={imageDimensions}
+                      imageRef={imageRef}
+                      onImageLoad={onImageLoad}
+                      cellSize={cellSize}
+                      unit={unit}
+                      dpi={dpi}
+                      gridOffset={gridOffset}
+                      onHover={onHover}
+                      hoveredCoords={hoveredCoords}
+                      clickedCoords={clickedCoords}
+                      onCellClick={onCellClick}
+                      gridColor={gridColor}
+                      labelColor={labelColor}
+                      gridThickness={gridThickness}
+                      containerRef={containerRef}
+                      splitCols={splitCols}
+                      splitRows={splitRows}
+                      showCenterCoords={showCenterCoords}
+                      onGridCropChange={onGridCropChange}
+                      sliceNames={sliceNames}
+                      onSliceNameChange={handleSliceNameChange}
+                      selectedSliceIndex={selectedSliceIndex}
+                      onSliceClick={handleSliceClick}
+                      editingSliceIndex={editingSliceIndex}
+                      onStartEditing={handleStartEditing}
+                      isReadOnly={isReadOnly}
+                      imageZoom={imageZoom}
+                      panOffset={panOffset}
+                      sliceImageSettings={sliceImageSettings}
+                      onSliceImageSettingsChange={onSliceImageSettingsChange}
+                      showReferencePoints={showReferencePoints}
+                      referenceColors={localReferenceColors}
+                  />
+                  
+                  {/* Reference Points are now handled entirely by ImageGridDisplay */}
+                </>
             ) : imageSrc ? (
                 <div className="relative">
                     <Image
                         ref={imageRef}
-                        src={imageSrc}
+                        src={imageSrc || ''}
                         alt="Uploaded map"
                         width={500}
                         height={500}
@@ -460,57 +532,246 @@ export default function ImageWorkspace({
             )}
         </div>
 
-        {imageSrc && showScaleBar && !isReadOnly && (
-          <ScaleBar
-            scale={scale}
-            cellSize={cellSize}
-            unit={unit}
-            dpi={dpi}
-            color={labelColor}
-          />
-        )}
-        {imageSrc && !isReadOnly && (
-           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-72 md:w-80 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex items-center gap-2">
-            <button 
-              onClick={() => {
-                setImageZoom(prev => Math.max(0.1, prev - 0.1));
-              }}
-              className="p-2 md:p-1 hover:bg-background/50 rounded touch-manipulation"
-            >
-              <ZoomOut className="h-5 w-5 md:h-4 md:w-4" />
-            </button>
-            <Slider
-                value={[imageZoom]}
-                onValueChange={(value) => {
-                  setImageZoom(value[0]);
-                }}
-                min={0.1}
-                max={5}
-                step={0.05}
-                className="flex-1"
-            />
-            <button 
-              onClick={() => {
-                setImageZoom(prev => Math.min(5, prev + 0.1));
-              }}
-              className="p-2 md:p-1 hover:bg-background/50 rounded touch-manipulation"
-            >
-              <ZoomIn className="h-5 w-5 md:h-4 md:w-4" />
-            </button>
-            <button 
-              onClick={() => {
-                setImageZoom(1);
-                setPanOffset({ x: 0, y: 0 });
-              }}
-              className="p-2 md:p-1 hover:bg-background/50 rounded ml-2 touch-manipulation"
-              title="Fit to screen"
-            >
-              <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />
-            </button>
-           </div>
-        )}
         </div>
       </div>
+      
+      {/* Fixed Scale Bar and Controls at Bottom - Only show if there's content */}
+      {imageSrc && (showScaleBar || (!isReadOnly && showReferencePoints) || !isReadOnly) && (
+        <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/50 shadow-lg">
+          <div className="flex items-center justify-between p-3 gap-4">
+            {/* Scale Bar - Left Side */}
+            {showScaleBar && (
+              <div className="flex-1 min-w-0">
+                <ScaleBar
+                  scale={scale}
+                  cellSize={cellSize}
+                  unit={unit}
+                  dpi={dpi}
+                  color={labelColor}
+                />
+              </div>
+            )}
+            
+            {/* Slice Controls - Center (only when map splitting is active) */}
+            {!isReadOnly && splitCols * splitRows > 1 && (
+              <div 
+                className="flex items-center gap-1 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {selectedSliceIndex !== null ? (
+                  <>
+                    <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded text-xs font-medium">
+                      <span className="text-primary">
+                        {sliceNames[selectedSliceIndex] || `Slice ${selectedSliceIndex + 1}`}
+                      </span>
+                      {sliceImageSettings?.[selectedSliceIndex] && (
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" title="Custom settings applied" />
+                      )}
+                    </div>
+                    <div className="h-4 w-px bg-border mx-1" />
+                    <button
+                      onClick={() => {
+                        const currentSettings = sliceImageSettings?.[selectedSliceIndex];
+                        const currentZoom = currentSettings?.zoom ?? imageZoom;
+                        const newZoom = Math.max(0.1, currentZoom - 0.1);
+                        onSliceImageSettingsChange?.(selectedSliceIndex, { zoom: newZoom });
+                      }}
+                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors"
+                      title="Zoom Out Slice"
+                    >
+                      <ZoomOut className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const currentSettings = sliceImageSettings?.[selectedSliceIndex];
+                        const currentZoom = currentSettings?.zoom ?? imageZoom;
+                        const newZoom = Math.min(5, currentZoom + 0.1);
+                        onSliceImageSettingsChange?.(selectedSliceIndex, { zoom: newZoom });
+                      }}
+                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors"
+                      title="Zoom In Slice"
+                    >
+                      <ZoomIn className="h-3 w-3" />
+                    </button>
+                    <div className="text-xs text-muted-foreground px-1">
+                      {Math.round(((sliceImageSettings?.[selectedSliceIndex]?.zoom ?? imageZoom) * 100))}%
+                    </div>
+                    <button
+                      onClick={() => {
+                        // Reset slice to global settings by removing custom settings
+                        onSliceImageSettingsChange?.(selectedSliceIndex, { 
+                          zoom: imageZoom, 
+                          panOffset: { ...panOffset }
+                        });
+                      }}
+                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Reset Slice to Global Settings"
+                      disabled={!sliceImageSettings?.[selectedSliceIndex]}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground px-2 py-1">
+                    Select a slice to control
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {/* Reference Line Color Controls - Center */}
+            {showReferencePoints && !isReadOnly && (
+              <div 
+                className="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm relative color-picker-container"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
+                  title="Reference Line Colors"
+                >
+                  <Palette className="h-4 w-4" />
+                </button>
+                
+                {showColorPicker && (
+                  <div className="absolute bottom-full mb-2 left-0 bg-background border border-border rounded-lg p-3 shadow-lg z-50 min-w-[200px]">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium">Reference Line Colors</div>
+                      <button
+                        onClick={() => {
+                          const defaultColors = {
+                            top: '#ffffff',
+                            right: '#ff0000',
+                            bottom: '#000000',
+                            left: '#01b050'
+                          };
+                          setLocalReferenceColors(defaultColors);
+                          setReferenceColors?.(defaultColors);
+                        }}
+                        className="p-1 hover:bg-background/50 rounded transition-colors"
+                        title="Reset to default colors"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {/* Top Line Color */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.top }}></div>
+                        <span className="text-xs flex-1">Top</span>
+                        <input 
+                          type="color" 
+                          value={localReferenceColors.top}
+                          onChange={(e) => {
+                            const newColors = { ...localReferenceColors, top: e.target.value };
+                            setLocalReferenceColors(newColors);
+                            setReferenceColors?.(newColors);
+                          }}
+                          className="w-6 h-6 rounded border-0 cursor-pointer"
+                        />
+                      </div>
+                      {/* Right Line Color */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.right }}></div>
+                        <span className="text-xs flex-1">Right</span>
+                        <input 
+                          type="color" 
+                          value={localReferenceColors.right}
+                          onChange={(e) => {
+                            const newColors = { ...localReferenceColors, right: e.target.value };
+                            setLocalReferenceColors(newColors);
+                            setReferenceColors?.(newColors);
+                          }}
+                          className="w-6 h-6 rounded border-0 cursor-pointer"
+                        />
+                      </div>
+                      {/* Bottom Line Color */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.bottom }}></div>
+                        <span className="text-xs flex-1">Bottom</span>
+                        <input 
+                          type="color" 
+                          value={localReferenceColors.bottom}
+                          onChange={(e) => {
+                            const newColors = { ...localReferenceColors, bottom: e.target.value };
+                            setLocalReferenceColors(newColors);
+                            setReferenceColors?.(newColors);
+                          }}
+                          className="w-6 h-6 rounded border-0 cursor-pointer"
+                        />
+                      </div>
+                      {/* Left Line Color */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.left }}></div>
+                        <span className="text-xs flex-1">Left</span>
+                        <input 
+                          type="color" 
+                          value={localReferenceColors.left}
+                          onChange={(e) => {
+                            const newColors = { ...localReferenceColors, left: e.target.value };
+                            setLocalReferenceColors(newColors);
+                            setReferenceColors?.(newColors);
+                          }}
+                          className="w-6 h-6 rounded border-0 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Zoom Controls - Right Side (only for editor mode) */}
+            {!isReadOnly && (
+              <div 
+                className="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => {
+                    setImageZoom(prev => Math.max(0.1, prev - 0.1));
+                  }}
+                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <div className="w-32">
+                  <Slider
+                      value={[imageZoom]}
+                      onValueChange={(value) => {
+                        setImageZoom(value[0]);
+                      }}
+                      min={0.1}
+                      max={5}
+                      step={0.05}
+                      className="flex-1"
+                  />
+                </div>
+                <button 
+                  onClick={() => {
+                    setImageZoom(prev => Math.min(5, prev + 0.1));
+                  }}
+                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+                <button 
+                  onClick={() => {
+                    setImageZoom(1);
+                    setPanOffset({ x: 0, y: 0 });
+                  }}
+                  className="p-2 hover:bg-background/50 rounded ml-2 touch-manipulation transition-colors"
+                  title="Fit to screen"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
