@@ -3,7 +3,14 @@ import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 import { prisma } from './prisma';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
+// Type assertion after validation
+const jwtSecret: string = JWT_SECRET;
 
 export interface AuthUser {
   id: string;
@@ -26,14 +33,14 @@ export function generateToken(user: AuthUser): string {
       email: user.email,
       name: user.name 
     },
-    JWT_SECRET,
+    jwtSecret,
     { expiresIn: '7d' }
   );
 }
 
 export function verifyToken(token: string): AuthUser | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       id: decoded.userId,
       email: decoded.email,

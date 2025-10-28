@@ -1,27 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
+import { gridMapSchema } from '@/lib/validation';
+import { apiRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = apiRateLimit(request);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     console.log('POST /api/grid-maps - Starting request');
-    console.log('Cookies:', request.cookies.getAll());
-    console.log('Authorization header:', request.headers.get('authorization'));
     
     const user = await getUserFromRequest(request);
-    console.log('User from request:', user);
     
     if (!user) {
-      console.log('No user found - returning 401');
+      console.log('Authentication failed');
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       );
     }
     
-    console.log('User authenticated:', user.id, user.email);
+    console.log('User authenticated:', user.id);
 
     const mapData = await request.json();
+    
+    // Validate input data
+    const validationResult = gridMapSchema.safeParse(mapData);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid input data',
+          details: validationResult.error.errors
+        },
+        { status: 400 }
+      );
+    }
     console.log('Received map data keys:', Object.keys(mapData));
     console.log('referenceColors type:', typeof mapData.referenceColors);
     console.log('referenceColors value:', mapData.referenceColors);
