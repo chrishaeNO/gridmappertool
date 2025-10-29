@@ -145,6 +145,13 @@ function HomeContent() {
         const parsedSliceNames = typeof mapData.sliceNames === 'string' 
           ? JSON.parse(mapData.sliceNames) 
           : mapData.sliceNames;
+        
+        // Convert sliceNames object to array if needed
+        const sliceNamesArray = Array.isArray(parsedSliceNames) 
+          ? parsedSliceNames 
+          : parsedSliceNames && typeof parsedSliceNames === 'object'
+            ? Object.values(parsedSliceNames)
+            : ['Slice 1'];
         const parsedReferenceColors = typeof mapData.referenceColors === 'string' 
           ? JSON.parse(mapData.referenceColors) 
           : mapData.referenceColors;
@@ -167,7 +174,7 @@ function HomeContent() {
         setGridThickness(mapData.gridThickness || 1);
         setSplitCols(mapData.splitCols || 1);
         setSplitRows(mapData.splitRows || 1);
-        setSliceNames(parsedSliceNames || ['Slice 1']);
+        setSliceNames(sliceNamesArray);
         setShowCenterCoords(mapData.showCenterCoords || false);
         setShowScaleBar(mapData.showScaleBar || true);
         setImageZoom(mapData.imageZoom || 1);

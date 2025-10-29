@@ -108,9 +108,17 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
           panOffset: typeof data.panOffset === 'string' 
             ? JSON.parse(data.panOffset) 
             : data.panOffset,
-          sliceNames: typeof data.sliceNames === 'string' 
-            ? JSON.parse(data.sliceNames) 
-            : data.sliceNames,
+          sliceNames: (() => {
+            const parsed = typeof data.sliceNames === 'string' 
+              ? JSON.parse(data.sliceNames) 
+              : data.sliceNames;
+            // Convert object to array if needed
+            return Array.isArray(parsed) 
+              ? parsed 
+              : parsed && typeof parsed === 'object'
+                ? Object.values(parsed)
+                : [];
+          })(),
           imageZoom: typeof data.imageZoom === 'string' 
             ? JSON.parse(data.imageZoom) 
             : data.imageZoom,
