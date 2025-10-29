@@ -1,8 +1,8 @@
-
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
+import { getColumnLabel } from '@/utils/columnLabels';
 
 type GridMap = {
   id: string;
@@ -113,7 +113,7 @@ const InteractiveGrid = ({ mapData }: InteractiveGridProps) => {
         return;
     };
     
-    const col = String.fromCharCode(65 + colIndex);
+    const col = getColumnLabel(colIndex);
     const row = rowIndex + 1;
     setHoveredCoords({ col, row });
   };
@@ -187,7 +187,7 @@ const InteractiveGrid = ({ mapData }: InteractiveGridProps) => {
                         fontSize: `${labelFontSize}px`,
                     }}
                 >
-                    {String.fromCharCode(65 + i)}
+                    {getColumnLabel(i)}
                 </div>
             ))}
 

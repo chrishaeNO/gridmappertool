@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
+import { cn } from '@/lib/utils';
+import { getColumnLabel } from '@/utils/columnLabels';
 import Image from "next/image";
 import { UploadCloud, ZoomIn, ZoomOut, Maximize2, Palette, RotateCcw } from "lucide-react";
 import GridDisplayContainer from './grid-display-container';
 import ImageGridDisplay from './image-grid-display';
 import ScaleBar from './scale-bar';
 import { Slider } from "@/components/ui/slider";
+import { useDragDrop } from '@/hooks/use-drag-drop';
+import { useToast } from '@/hooks/use-toast';
+import { formatFileSize } from '@/utils/image-compression';
 import './shared-map-styles.css';
-import { cn } from "@/lib/utils";
 
 export type ImageDimensions = {
   naturalWidth: number;
@@ -18,6 +22,7 @@ type ImageWorkspaceProps = {
   imageRef: React.RefObject<HTMLImageElement>;
   imageDimensions: ImageDimensions | null;
   onImageLoad: (dimensions: ImageDimensions) => void;
+  onImageUpload?: (file: File) => void;
   cellSize: number;
   unit: "px" | "mm";
   dpi: number;
@@ -72,6 +77,7 @@ export default function ImageWorkspace({
   imageRef,
   imageDimensions,
   onImageLoad,
+  onImageUpload,
   cellSize,
   unit,
   dpi,
@@ -137,6 +143,36 @@ export default function ImageWorkspace({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
   const [touchStartZoom, setTouchStartZoom] = useState<number>(1);
+  const { toast } = useToast();
+
+  // Drag and drop functionality for when no image is loaded
+  const { isDragOver, isCompressing, dragProps } = useDragDrop({
+    onFileUpload: onImageUpload || (() => {}),
+    acceptedTypes: ['image/*', 'application/pdf'],
+    maxFileSize: 8 * 1024 * 1024, // 8MB limit
+    onCompressionStart: () => {
+      toast({
+        title: 'Compressing Image',
+        description: 'Large image detected. Compressing to optimize size...',
+      });
+    },
+    onCompressionComplete: (result) => {
+      if (result.wasCompressed) {
+        const savedSpace = ((1 - result.compressionRatio) * 100).toFixed(1);
+        toast({
+          title: 'Image Compressed Successfully',
+          description: `File size reduced from ${formatFileSize(result.originalSize)} to ${formatFileSize(result.compressedSize)} (${savedSpace}% smaller)`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Error',
+        description: error,
+      });
+    }
+  });
 
   const fitAndCenter = useCallback(() => {
     if (!imageDimensions || !containerRef.current) {
@@ -284,7 +320,7 @@ export default function ImageWorkspace({
     const totalCols = Math.floor((imageDimensions.naturalWidth - gridOffset.x) / cellSizePx);
 
     if (colIndex >= 0 && colIndex < totalCols + 1 && rowIndex >= 0) {
-      const col = String.fromCharCode(65 + colIndex);
+      const col = getColumnLabel(colIndex);
       const row = rowIndex + 1;
       onHover({ col, row });
     } else {
@@ -297,19 +333,14 @@ export default function ImageWorkspace({
     setIsPanning(false);
   };
   
-  const handleGlobalClick = useCallback((e: MouseEvent) => {
-    if (contentRef.current && !contentRef.current.contains(e.target as Node)) {
+  // Function to deselect slice when clicking on background (not on any slice)
+  const handleBackgroundClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Only deselect if clicking directly on the background container
+    if (e.target === e.currentTarget) {
       setSelectedSliceIndex(null);
       setEditingSliceIndex(null);
     }
   }, [setSelectedSliceIndex]);
-
-  useEffect(() => {
-    document.addEventListener('mousedown', handleGlobalClick);
-    return () => {
-      document.removeEventListener('mousedown', handleGlobalClick);
-    };
-  }, [handleGlobalClick]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // Ingen panning for delte kart siden de ikke kan zoome
@@ -429,17 +460,22 @@ export default function ImageWorkspace({
   };
   return (
     <div className="h-full w-full flex flex-col relative" style={{ backgroundColor }}>
-      {/* Main content area - uses full available space */}
-      <div className="flex-1 relative overflow-hidden">
+      {/* Main content area - uses full available space with scroll */}
+      <div className="flex-1 relative overflow-auto">
         {/* Image workspace - professional full-screen layout */}
         <div
           ref={containerRef}
           className={cn("absolute inset-0", 
             isReadOnly ? "shared-map-container scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent" : "overflow-auto flex items-center justify-center",
-            disablePanning ? '' : (isPanning ? 'cursor-grabbing' : (isReadOnly ? '' : (imageZoom > 1 ? 'cursor-grab' : ''))))}
+            disablePanning ? '' : (isPanning ? 'cursor-grabbing' : (isReadOnly ? '' : (imageZoom > 1 ? 'cursor-grab' : ''))),
+            // Add drag and drop styling when no image is loaded
+            !imageSrc && onImageUpload && isDragOver ? 'bg-primary/5' : ''
+          )}
           style={{ 
-            paddingBottom: showScaleBar ? '80px' : '20px'
+            paddingBottom: showScaleBar ? '80px' : '0px'
           }}
+          // Add drag and drop events when no image is loaded
+          {...(!imageSrc && onImageUpload ? dragProps : {})}
           onMouseMove={disablePanning ? undefined : handleMouseMove}
           onMouseLeave={disablePanning ? undefined : handleMouseLeave}
           onMouseDown={disablePanning ? undefined : handleMouseDown}
@@ -455,12 +491,7 @@ export default function ImageWorkspace({
             style={{
               transform: isReadOnly ? 'scale(1)' : `scale(${scale})`
             }}
-            onClick={(e) => {
-               if (e.target === e.currentTarget) {
-                  setSelectedSliceIndex(null);
-                  setEditingSliceIndex(null);
-               }
-            }}
+            onClick={handleBackgroundClick}
           >
             {imageSrc && imageDimensions ? (
                 <>
@@ -522,254 +553,64 @@ export default function ImageWorkspace({
                     />
                 </div>
             ) : (
-              <div className="text-center text-muted-foreground p-8 border-2 border-dashed border-muted-foreground/30 rounded-xl">
-                <UploadCloud className="mx-auto h-12 w-12" />
-                <h3 className="mt-4 text-lg font-medium">Upload an Image</h3>
-                <p className="mt-1 text-sm">
-                  Click the 'Upload Image' button to get started.
-                </p>
-              </div>
-            )}
-        </div>
-
-        </div>
-      </div>
-      
-      {/* Fixed Scale Bar and Controls at Bottom - Only show if there's content */}
-      {imageSrc && (showScaleBar || (!isReadOnly && showReferencePoints) || !isReadOnly) && (
-        <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/50 shadow-lg">
-          <div className="flex items-center justify-between p-3 gap-4">
-            {/* Scale Bar - Left Side */}
-            {showScaleBar && (
-              <div className="flex-1 min-w-0">
-                <ScaleBar
-                  scale={scale}
-                  cellSize={cellSize}
-                  unit={unit}
-                  dpi={dpi}
-                  color={labelColor}
-                />
-              </div>
-            )}
-            
-            {/* Slice Controls - Center (only when map splitting is active) */}
-            {!isReadOnly && splitCols * splitRows > 1 && (
               <div 
-                className="flex items-center gap-1 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {selectedSliceIndex !== null ? (
-                  <>
-                    <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded text-xs font-medium">
-                      <span className="text-primary">
-                        {sliceNames[selectedSliceIndex] || `Slice ${selectedSliceIndex + 1}`}
-                      </span>
-                      {sliceImageSettings?.[selectedSliceIndex] && (
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" title="Custom settings applied" />
-                      )}
-                    </div>
-                    <div className="h-4 w-px bg-border mx-1" />
-                    <button
-                      onClick={() => {
-                        const currentSettings = sliceImageSettings?.[selectedSliceIndex];
-                        const currentZoom = currentSettings?.zoom ?? imageZoom;
-                        const newZoom = Math.max(0.1, currentZoom - 0.1);
-                        onSliceImageSettingsChange?.(selectedSliceIndex, { zoom: newZoom });
-                      }}
-                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors"
-                      title="Zoom Out Slice"
-                    >
-                      <ZoomOut className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        const currentSettings = sliceImageSettings?.[selectedSliceIndex];
-                        const currentZoom = currentSettings?.zoom ?? imageZoom;
-                        const newZoom = Math.min(5, currentZoom + 0.1);
-                        onSliceImageSettingsChange?.(selectedSliceIndex, { zoom: newZoom });
-                      }}
-                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors"
-                      title="Zoom In Slice"
-                    >
-                      <ZoomIn className="h-3 w-3" />
-                    </button>
-                    <div className="text-xs text-muted-foreground px-1">
-                      {Math.round(((sliceImageSettings?.[selectedSliceIndex]?.zoom ?? imageZoom) * 100))}%
-                    </div>
-                    <button
-                      onClick={() => {
-                        // Reset slice to global settings by removing custom settings
-                        onSliceImageSettingsChange?.(selectedSliceIndex, { 
-                          zoom: imageZoom, 
-                          panOffset: { ...panOffset }
-                        });
-                      }}
-                      className="p-1 hover:bg-background/50 rounded touch-manipulation transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Reset Slice to Global Settings"
-                      disabled={!sliceImageSettings?.[selectedSliceIndex]}
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground px-2 py-1">
-                    Select a slice to control
-                  </span>
+                {...(onImageUpload ? dragProps : {})}
+                className={cn(
+                  "text-center text-muted-foreground p-8 border-2 border-dashed rounded-xl transition-colors relative max-w-md mx-auto",
+                  onImageUpload && isDragOver 
+                    ? "border-primary bg-primary/5 border-solid" 
+                    : "border-muted-foreground/30",
+                  onImageUpload ? "cursor-pointer hover:border-muted-foreground/50" : ""
                 )}
-              </div>
-            )}
-            
-            {/* Reference Line Color Controls - Center */}
-            {showReferencePoints && !isReadOnly && (
-              <div 
-                className="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm relative color-picker-container"
-                onClick={(e) => e.stopPropagation()}
               >
-                <button 
-                  onClick={() => setShowColorPicker(!showColorPicker)}
-                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
-                  title="Reference Line Colors"
-                >
-                  <Palette className="h-4 w-4" />
-                </button>
-                
-                {showColorPicker && (
-                  <div className="absolute bottom-full mb-2 left-0 bg-background border border-border rounded-lg p-3 shadow-lg z-50 min-w-[200px]">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium">Reference Line Colors</div>
-                      <button
-                        onClick={() => {
-                          const defaultColors = {
-                            top: '#ffffff',
-                            right: '#ff0000',
-                            bottom: '#000000',
-                            left: '#01b050'
-                          };
-                          setLocalReferenceColors(defaultColors);
-                          setReferenceColors?.(defaultColors);
-                        }}
-                        className="p-1 hover:bg-background/50 rounded transition-colors"
-                        title="Reset to default colors"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {/* Top Line Color */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.top }}></div>
-                        <span className="text-xs flex-1">Top</span>
-                        <input 
-                          type="color" 
-                          value={localReferenceColors.top}
-                          onChange={(e) => {
-                            const newColors = { ...localReferenceColors, top: e.target.value };
-                            setLocalReferenceColors(newColors);
-                            setReferenceColors?.(newColors);
-                          }}
-                          className="w-6 h-6 rounded border-0 cursor-pointer"
-                        />
-                      </div>
-                      {/* Right Line Color */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.right }}></div>
-                        <span className="text-xs flex-1">Right</span>
-                        <input 
-                          type="color" 
-                          value={localReferenceColors.right}
-                          onChange={(e) => {
-                            const newColors = { ...localReferenceColors, right: e.target.value };
-                            setLocalReferenceColors(newColors);
-                            setReferenceColors?.(newColors);
-                          }}
-                          className="w-6 h-6 rounded border-0 cursor-pointer"
-                        />
-                      </div>
-                      {/* Bottom Line Color */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.bottom }}></div>
-                        <span className="text-xs flex-1">Bottom</span>
-                        <input 
-                          type="color" 
-                          value={localReferenceColors.bottom}
-                          onChange={(e) => {
-                            const newColors = { ...localReferenceColors, bottom: e.target.value };
-                            setLocalReferenceColors(newColors);
-                            setReferenceColors?.(newColors);
-                          }}
-                          className="w-6 h-6 rounded border-0 cursor-pointer"
-                        />
-                      </div>
-                      {/* Left Line Color */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded border" style={{ backgroundColor: localReferenceColors.left }}></div>
-                        <span className="text-xs flex-1">Left</span>
-                        <input 
-                          type="color" 
-                          value={localReferenceColors.left}
-                          onChange={(e) => {
-                            const newColors = { ...localReferenceColors, left: e.target.value };
-                            setLocalReferenceColors(newColors);
-                            setReferenceColors?.(newColors);
-                          }}
-                          className="w-6 h-6 rounded border-0 cursor-pointer"
-                        />
-                      </div>
+                <UploadCloud className={cn("mx-auto h-12 w-12", isDragOver && "text-primary")} />
+                <h3 className={cn("mt-4 text-lg font-medium", isDragOver && "text-primary")}>
+                  {isDragOver ? "Drop your file here" : "Upload an Image"}
+                </h3>
+                <p className={cn("mt-1 text-sm", isDragOver && "text-primary")}>
+                  {isDragOver 
+                    ? "Release to upload your image or PDF" 
+                    : onImageUpload 
+                      ? "Drag and drop an image or PDF file anywhere on this area, or click the 'Upload Image' button to get started. Large images will be compressed automatically."
+                      : "Click the 'Upload Image' button to get started."
+                  }
+                </p>
+                {onImageUpload && isDragOver && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-xl border-2 border-primary border-dashed">
+                    <div className="text-center">
+                      <UploadCloud className="mx-auto h-16 w-16 text-primary mb-4" />
+                      <p className="text-lg font-medium text-primary">Drop file here to upload</p>
                     </div>
                   </div>
                 )}
               </div>
             )}
-            
-            {/* Zoom Controls - Right Side (only for editor mode) */}
-            {!isReadOnly && (
-              <div 
-                className="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-sm"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button 
-                  onClick={() => {
-                    setImageZoom(prev => Math.max(0.1, prev - 0.1));
-                  }}
-                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </button>
-                <div className="w-32">
-                  <Slider
-                      value={[imageZoom]}
-                      onValueChange={(value) => {
-                        setImageZoom(value[0]);
-                      }}
-                      min={0.1}
-                      max={5}
-                      step={0.05}
-                      className="flex-1"
-                  />
-                </div>
-                <button 
-                  onClick={() => {
-                    setImageZoom(prev => Math.min(5, prev + 0.1));
-                  }}
-                  className="p-2 hover:bg-background/50 rounded touch-manipulation transition-colors"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
-                <button 
-                  onClick={() => {
-                    setImageZoom(1);
-                    setPanOffset({ x: 0, y: 0 });
-                  }}
-                  className="p-2 hover:bg-background/50 rounded ml-2 touch-manipulation transition-colors"
-                  title="Fit to screen"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+        </div>
+
+        {/* Full-screen drag overlay when dragging over the entire area */}
+        {!imageSrc && onImageUpload && isDragOver && (
+          <div className="absolute inset-0 bg-primary/10 border-4 border-primary border-dashed flex items-center justify-center z-50 pointer-events-none">
+            <div className="text-center">
+              <UploadCloud className="mx-auto h-24 w-24 text-primary mb-4" />
+              <h2 className="text-2xl font-bold text-primary mb-2">Drop your file anywhere</h2>
+              <p className="text-lg text-primary">Release to upload your image or PDF</p>
+            </div>
           </div>
+        )}
+
+        </div>
+      </div>
+      
+      {/* Scale Bar - Only show if enabled */}
+      {imageSrc && showScaleBar && (
+        <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg p-2 shadow-lg">
+          <ScaleBar 
+            scale={imageZoom}
+            cellSize={cellSize}
+            unit={unit}
+            dpi={dpi}
+            color={gridColor}
+          />
         </div>
       )}
     </div>

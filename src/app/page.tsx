@@ -9,6 +9,7 @@ import {analyzeImageBrightness} from '@/ai/flows/analyze-image-brightness';
 import type {ImageDimensions} from '@/components/image-workspace';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { getColumnLabel } from '@/utils/columnLabels';
 import { GridMapperProps } from '@/components/grid-mapper';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -688,14 +689,14 @@ function HomeContent() {
           let linePadding = 0;
           
           if (showReferencePoints) {
-            linePadding = 15 * scale; // Nøyaktig 15px som på skjermen
+            linePadding = 20 * scale; // Økt fra 15px til 20px for mer spacing
             const lineThickness = 8 * scale; // Nøyaktig 8px som på skjermen
-            extraWidth = linePadding + lineThickness; // Kun høyre margin
-            extraHeight = linePadding + lineThickness; // Kun bunn margin
+            extraWidth = (linePadding * 1.5) + lineThickness; // Ekstra høyre margin for rød linje
+            extraHeight = (linePadding * 1.5) + lineThickness; // Ekstra bunn margin for sort linje
           }
           
-          tempCanvas.width = scaledSliceWidth + exportLabelSize + extraWidth;
-          tempCanvas.height = scaledSliceHeight + exportLabelSize + extraHeight;
+          tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth;
+          tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight;
           
           tempCtx.fillStyle = backgroundColor;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -771,6 +772,10 @@ function HomeContent() {
           const numColsToDraw = Math.ceil((scaledSliceWidth - firstColOffset + 1e-9) / scaledCellSize);
           const numRowsToDraw = Math.ceil((scaledSliceHeight - firstRowOffset + 1e-9) / scaledCellSize);
           
+          // For labels, we need the number of actual cells, not grid lines
+          const numCellCols = Math.floor((scaledSliceWidth - firstColOffset + 1e-9) / scaledCellSize);
+          const numCellRows = Math.floor((scaledSliceHeight - firstRowOffset + 1e-9) / scaledCellSize);
+          
           tempCtx.save();
           tempCtx.beginPath();
           tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
@@ -808,48 +813,80 @@ function HomeContent() {
             tempCtx.textAlign = 'center';
             tempCtx.textBaseline = 'middle';
 
-            for (let i = 0; i <= numColsToDraw; i++) {
+            // Column labels - Top
+            for (let i = 0; i < numCellCols; i++) {
                 const xOnSlice = firstColOffset + i * scaledCellSize;
                 
                 if (xOnSlice >= -scaledCellSize && xOnSlice <= scaledSliceWidth) {
-                    const char = String.fromCharCode(65 + startColIndex + i);
-                    // Sentrert over cellen - midt i cellen
+                    const char = getColumnLabel(startColIndex + i);
+                    // Top labels
                     tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : 0) + exportLabelSize / 2);
                 }
             }
             
-            for (let i = 0; i <= numRowsToDraw; i++) {
+            // Column labels - Bottom
+            for (let i = 0; i < numCellCols; i++) {
+                const xOnSlice = firstColOffset + i * scaledCellSize;
+                
+                if (xOnSlice >= -scaledCellSize && xOnSlice <= scaledSliceWidth) {
+                    const char = getColumnLabel(startColIndex + i);
+                    // Bottom labels - samme X som topp, men Y i bunn label-området
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
+                }
+            }
+            
+            // Row labels - Left
+            for (let i = 0; i < numCellRows; i++) {
                 const yOnSlice = firstRowOffset + i * scaledCellSize;
                 
                 if (yOnSlice >= -scaledCellSize && yOnSlice <= scaledSliceHeight) {
                     const numLabel = startRowIndex + i + 1;
-                    // Sentrert i forhold til cellen - midt i cellen
+                    // Left labels
                     tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                }
+            }
+            
+            // Row labels - Right
+            for (let i = 0; i < numCellRows; i++) {
+                const yOnSlice = firstRowOffset + i * scaledCellSize;
+                
+                if (yOnSlice >= -scaledCellSize && yOnSlice <= scaledSliceHeight) {
+                    const numLabel = startRowIndex + i + 1;
+                    // Right labels - samme Y som venstre, men X i høyre label-området
+                    tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
                 }
             }
           }
           
-          // Add reference lines if enabled - INNENFOR canvas
+          // Add reference lines if enabled - SAMME SOM ORIGINAL
           if (showReferencePoints) {
-            const lineThickness = 8 * scale; // Fast tykkelse som på skjermen
-            const sliceContentWidth = scaledSliceWidth + exportLabelSize; // 520px på skjermen
-            const sliceContentHeight = scaledSliceHeight + exportLabelSize; // 520px på skjermen
+            const lineThickness = 4 * scale; // Halvparten av tykkelsen (fra 8px til 4px)
+            const sliceContentWidth = scaledSliceWidth + (2 * exportLabelSize); // Updated for labels on both sides
+            const sliceContentHeight = scaledSliceHeight + (2 * exportLabelSize); // Updated for labels on top and bottom
             
-            // Top line: OVER labels
+            // REFERANSELINJER SOM RAMME RUNDT HELE DET EXPORTERTE BILDET
+            const totalCanvasWidth = tempCanvas.width;
+            const totalCanvasHeight = tempCanvas.height;
+            
+            // Top line: samme bredde som grid, sentrert i canvas
             tempCtx.fillStyle = referenceColors.top;
-            tempCtx.fillRect(exportLabelSize, 0, scaledSliceWidth, lineThickness);
+            const topLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
+            tempCtx.fillRect(topLineX, 0, scaledSliceWidth, lineThickness);
             
-            // Right line: TIL HØYRE for slice-innholdet
+            // Right line: samme høyde som grid, sentrert i canvas
             tempCtx.fillStyle = referenceColors.right;
-            tempCtx.fillRect(exportLabelSize + scaledSliceWidth + linePadding, exportLabelSize, lineThickness, scaledSliceHeight);
+            const rightLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
+            tempCtx.fillRect(totalCanvasWidth - lineThickness, rightLineY, lineThickness, scaledSliceHeight);
             
-            // Bottom line: UNDER slice-innholdet
+            // Bottom line: samme bredde som grid, sentrert i canvas
             tempCtx.fillStyle = referenceColors.bottom;
-            tempCtx.fillRect(exportLabelSize, exportLabelSize + scaledSliceHeight + linePadding, scaledSliceWidth, lineThickness);
+            const bottomLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
+            tempCtx.fillRect(bottomLineX, totalCanvasHeight - lineThickness, scaledSliceWidth, lineThickness);
             
-            // Left line: TIL VENSTRE for labels
+            // Left line: samme høyde som grid, sentrert i canvas
             tempCtx.fillStyle = referenceColors.left;
-            tempCtx.fillRect(0, exportLabelSize, lineThickness, scaledSliceHeight);
+            const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
+            tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
           }
           
           const blob = await new Promise<Blob | null>(resolve => tempCanvas.toBlob(resolve, 'image/jpeg', 0.9));
@@ -914,6 +951,14 @@ function HomeContent() {
         onMobileControlsToggle={() => setIsMobileSheetOpen(true)}
         showReferencePoints={showReferencePoints}
         onToggleReferencePoints={setShowReferencePoints}
+        imageZoom={imageZoom}
+        onZoomChange={setImageZoom}
+        onFitToScreen={() => {
+          setImageZoom(1);
+          setPanOffset({ x: 0, y: 0 });
+        }}
+        referenceColors={referenceColors}
+        onReferenceColorsChange={setReferenceColors}
       />
       <main className="flex-1 overflow-hidden mobile-bottom-spacing md:pb-0">
         <GridMapper

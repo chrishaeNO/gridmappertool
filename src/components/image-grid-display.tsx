@@ -1,8 +1,8 @@
-
 "use client";
 
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useMemo, useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { getColumnLabel } from '@/utils/columnLabels';
 
 export type ImageDimensions = {
   naturalWidth: number;
@@ -349,10 +349,13 @@ function ImageGridDisplay({
     }, [isDragging]);
 
     const handleGridClick = (event: React.MouseEvent<HTMLDivElement>) => {
-        if (!onCellClick) return;
-        
         // Stopp event-propagering for å unngå at parent onClick fjerner koordinater
         event.stopPropagation();
+        
+        // Kall slice onClick for å markere denne slicen
+        onClick();
+        
+        if (!onCellClick) return;
         
         // Finn nærmeste container med transform for å få riktig skala
         let element = event.currentTarget as HTMLElement;
@@ -392,7 +395,7 @@ function ImageGridDisplay({
         const colIndex = localColIndex + startColIndex;
         const rowIndex = localRowIndex + startRowIndex;
         
-        const colChar = String.fromCharCode(65 + colIndex);
+        const colChar = getColumnLabel(colIndex);
         const rowNumber = rowIndex + 1;
         
         onCellClick({ col: colChar, row: rowNumber });
@@ -462,14 +465,21 @@ function ImageGridDisplay({
             !isReadOnly && isSplit ? "cursor-pointer" : "cursor-default",
             !isReadOnly && isSplit && isSelected ? "border-2 border-ring" : "border"
           )}
-          style={{ width: sliceWidth + labelSize, height: sliceHeight + labelSize }}
+          style={{ width: sliceWidth + (2 * labelSize), height: sliceHeight + (2 * labelSize) }}
           onClick={onClick}
           onDoubleClick={onStartEditing}
         >
-            {/* Corner Box */}
-            {shouldShowLabels && <div className="absolute top-0 left-0" style={{width: labelSize, height: labelSize}}></div>}
+            {/* Corner Boxes */}
+            {shouldShowLabels && (
+              <>
+                <div className="absolute top-0 left-0" style={{width: labelSize, height: labelSize}}></div>
+                <div className="absolute top-0 right-0" style={{width: labelSize, height: labelSize}}></div>
+                <div className="absolute bottom-0 left-0" style={{width: labelSize, height: labelSize}}></div>
+                <div className="absolute bottom-0 right-0" style={{width: labelSize, height: labelSize}}></div>
+              </>
+            )}
 
-            {/* Column Labels */}
+            {/* Column Labels - Top */}
             {shouldShowLabels && Array.from({ length: numCols }).map((_, i) => {
               const xOnSlice = gridLeft + i * colWidth;
               const xInCanvas = xOnSlice + colWidth / 2;
@@ -477,7 +487,7 @@ function ImageGridDisplay({
 
               return (
                 <div
-                    key={`col-${i}`}
+                    key={`col-top-${i}`}
                     className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
                     style={{
                         color: labelColor,
@@ -491,12 +501,39 @@ function ImageGridDisplay({
                         zIndex: 10,
                     }}
                 >
-                    {String.fromCharCode(65 + startColIndex + i)}
+                    {getColumnLabel(startColIndex + i)}
+                </div>
+              )
+            })}
+
+            {/* Column Labels - Bottom */}
+            {shouldShowLabels && Array.from({ length: numCols }).map((_, i) => {
+              const xOnSlice = gridLeft + i * colWidth;
+              const xInCanvas = xOnSlice + colWidth / 2;
+              if (xInCanvas < 0 || xInCanvas > sliceWidth) return null;
+
+              return (
+                <div
+                    key={`col-bottom-${i}`}
+                    className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
+                    style={{
+                        color: labelColor,
+                        left: `${labelSize + xInCanvas - (colWidth/2)}px`,
+                        top: `${labelSize + sliceHeight}px`,
+                        width: `${colWidth}px`,
+                        height: `${labelSize}px`,
+                        fontSize: `${labelFontSize}px`,
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                    }}
+                >
+                    {getColumnLabel(startColIndex + i)}
                 </div>
               )
             })}
             
-            {/* Row Labels */}
+            {/* Row Labels - Left */}
             {shouldShowLabels && Array.from({ length: numRows }).map((_, i) => {
               const yOnSlice = gridTop + i * rowHeight;
               const yInCanvas = yOnSlice + rowHeight / 2;
@@ -504,7 +541,7 @@ function ImageGridDisplay({
 
               return (
                 <div
-                    key={`row-${i}`}
+                    key={`row-left-${i}`}
                     className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
                     style={{
                         color: labelColor,
@@ -513,6 +550,36 @@ function ImageGridDisplay({
                         height: `${rowHeight}px`,
                         width: `${labelSize}px`,
                         fontSize: `${labelFontSize}px`,
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                    }}
+                >
+                    {startRowIndex + i + 1}
+                </div>
+              )
+            })}
+
+            {/* Row Labels - Right */}
+            {shouldShowLabels && Array.from({ length: numRows }).map((_, i) => {
+              const yOnSlice = gridTop + i * rowHeight;
+              const yInCanvas = yOnSlice + rowHeight / 2;
+              if (yInCanvas < 0 || yInCanvas > sliceHeight) return null;
+
+              return (
+                <div
+                    key={`row-right-${i}`}
+                    className="absolute text-center font-bold flex items-center justify-center pointer-events-none"
+                    style={{
+                        color: labelColor,
+                        top: `${labelSize + yInCanvas - (rowHeight/2)}px`,
+                        left: `${labelSize + sliceWidth}px`,
+                        height: `${rowHeight}px`,
+                        width: `${labelSize}px`,
+                        fontSize: `${labelFontSize}px`,
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                        fontWeight: 'bold',
+                        zIndex: 10,
                     }}
                 >
                     {startRowIndex + i + 1}
@@ -611,57 +678,57 @@ function ImageGridDisplay({
                 <div className="absolute pointer-events-none">
                     {/* Calculate reference line positioning based on actual slice dimensions */}
                     {(() => {
-                        const linePadding = Math.max(12, labelSize * 0.3); // Dynamic padding based on label size
+                        const linePadding = Math.max(10, labelSize * 0.25); // Redusert padding til 10px mellom labels og linjer
                         const lineThickness = Math.max(4, labelSize * 0.15); // Dynamic thickness
-                        const sliceContentWidth = sliceWidth + labelSize;
-                        const sliceContentHeight = sliceHeight + labelSize;
+                        const sliceContentWidth = sliceWidth + (2 * labelSize); // Updated for labels on both sides
+                        const sliceContentHeight = sliceHeight + (2 * labelSize); // Updated for labels on top and bottom
                         
                         return (
                             <>
-                                {/* Top line - hvit */}
+                                {/* Top line - hvit - ekstra 5px avstand fra labels */}
                                 <div 
                                     className="absolute z-20"
                                     style={{
-                                        left: `0px`,
-                                        top: `${-linePadding}px`,
-                                        width: `${sliceContentWidth}px`,
+                                        left: `${labelSize}px`,
+                                        top: `${-(linePadding + 5)}px`,
+                                        width: `${sliceWidth}px`,
                                         height: `${lineThickness}px`,
                                         backgroundColor: referenceColors.top,
                                         boxShadow: '0 0 2px rgba(0,0,0,0.3)',
                                     }}
                                 />
-                                {/* Right line - rød */}
+                                {/* Right line - rød - normal avstand (20px) */}
                                 <div 
                                     className="absolute z-20"
                                     style={{
                                         left: `${sliceContentWidth + linePadding}px`,
-                                        top: `0px`,
+                                        top: `${labelSize}px`,
                                         width: `${lineThickness}px`,
-                                        height: `${sliceContentHeight}px`,
+                                        height: `${sliceHeight}px`,
                                         backgroundColor: referenceColors.right,
                                         boxShadow: '0 0 2px rgba(0,0,0,0.3)',
                                     }}
                                 />
-                                {/* Bottom line - sort */}
+                                {/* Bottom line - sort - normal avstand (20px) */}
                                 <div 
                                     className="absolute z-20"
                                     style={{
-                                        left: `0px`,
+                                        left: `${labelSize}px`,
                                         top: `${sliceContentHeight + linePadding}px`,
-                                        width: `${sliceContentWidth}px`,
+                                        width: `${sliceWidth}px`,
                                         height: `${lineThickness}px`,
                                         backgroundColor: referenceColors.bottom,
                                         boxShadow: '0 0 2px rgba(0,0,0,0.3)',
                                     }}
                                 />
-                                {/* Left line - grønn */}
+                                {/* Left line - grønn - ekstra 5px avstand fra labels */}
                                 <div 
                                     className="absolute z-20"
                                     style={{
-                                        left: `${-linePadding}px`,
-                                        top: `0px`,
+                                        left: `${-(linePadding + 5)}px`,
+                                        top: `${labelSize}px`,
                                         width: `${lineThickness}px`,
-                                        height: `${sliceContentHeight}px`,
+                                        height: `${sliceHeight}px`,
                                         backgroundColor: referenceColors.left,
                                         boxShadow: '0 0 2px rgba(0,0,0,0.3)',
                                     }}

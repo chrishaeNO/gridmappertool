@@ -1,6 +1,9 @@
 'use client';
 
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useState} from 'react';
+import { useDragDrop } from '@/hooks/use-drag-drop';
+import { useToast } from '@/hooks/use-toast';
+import { formatFileSize } from '@/utils/image-compression';
 import {
   Card,
   CardContent,
@@ -20,7 +23,7 @@ import {Label} from '@/components/ui/label';
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group';
 import {Separator} from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {UploadCloud, Palette, Grid, Eye, AlertTriangle, CheckCircle2, FileText, Map} from 'lucide-react';
+import {UploadCloud, Palette, Grid, Eye, AlertTriangle, CheckCircle2, FileText, Map, Loader2} from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import type {Dispatch, SetStateAction} from 'react';
 import { cn } from "@/lib/utils";
@@ -127,6 +130,35 @@ export default function ControlPanel({
   onResetAllSliceSettings,
 }: ControlPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const { isDragOver, isCompressing, dragProps, processFile } = useDragDrop({
+    onFileUpload: onImageUpload,
+    acceptedTypes: ['image/*', 'application/pdf'],
+    maxFileSize: 8 * 1024 * 1024, // 8MB limit
+    onCompressionStart: () => {
+      toast({
+        title: 'Compressing Image',
+        description: 'Large image detected. Compressing to optimize size...',
+      });
+    },
+    onCompressionComplete: (result) => {
+      if (result.wasCompressed) {
+        const savedSpace = ((1 - result.compressionRatio) * 100).toFixed(1);
+        toast({
+          title: 'Image Compressed Successfully',
+          description: `File size reduced from ${formatFileSize(result.originalSize)} to ${formatFileSize(result.compressedSize)} (${savedSpace}% smaller)`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Error',
+        description: error,
+      });
+    }
+  });
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -134,7 +166,7 @@ export default function ControlPanel({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      onImageUpload(e.target.files[0]);
+      processFile(e.target.files[0]);
     }
   };
 
@@ -163,13 +195,43 @@ export default function ControlPanel({
               onChange={handleFileChange}
               accept="image/*,application/pdf"
             />
-            <Button
-              onClick={handleUploadClick}
-              className="w-full h-11 md:h-10 touch-manipulation"
-              variant="outline"
+            <div
+              {...dragProps}
+              className={cn(
+                "relative border-2 border-dashed rounded-lg p-4 transition-colors",
+                isDragOver 
+                  ? "border-primary bg-primary/5 border-solid" 
+                  : "border-muted-foreground/30 hover:border-muted-foreground/50"
+              )}
             >
-              {hasImage ? 'Change Image' : 'Upload Image or PDF'}
-            </Button>
+              <Button
+                onClick={handleUploadClick}
+                className="w-full h-11 md:h-10 touch-manipulation"
+                variant="outline"
+                disabled={isCompressing}
+              >
+                {isCompressing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Compressing...
+                  </>
+                ) : (
+                  hasImage ? 'Change Image' : 'Upload Image or PDF'
+                )}
+              </Button>
+              {isDragOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-lg border-2 border-primary border-dashed">
+                  <div className="text-center">
+                    <UploadCloud className="mx-auto h-8 w-8 text-primary mb-2" />
+                    <p className="text-sm font-medium text-primary">Drop file here</p>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Or drag and drop an image or PDF file here<br />
+                <span className="text-xs">Max size: 8MB (images will be compressed automatically)</span>
+              </p>
+            </div>
           </div>
 
           {/* Settings */}

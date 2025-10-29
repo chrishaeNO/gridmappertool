@@ -55,7 +55,7 @@ export default function FloatingInfoButton() {
         onClick={() => setIsOpen(true)}
         size="icon"
         variant="outline"
-        className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-2"
+        className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/80 text-white hover:bg-black/95 hover:text-white border-0 shadow-md hover:shadow-lg"
         aria-label="App Information"
       >
         <Info className="h-5 w-5" />
@@ -63,7 +63,7 @@ export default function FloatingInfoButton() {
 
       {/* Info Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-md mx-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="flex items-center justify-center size-8 bg-primary/10 rounded-lg shadow-inner">
@@ -93,7 +93,7 @@ export default function FloatingInfoButton() {
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Built by:</span>
-                <span className="text-muted-foreground">Christian Hæ</span>
+                <span className="text-muted-foreground">chrishaeNO</span>
               </div>
             </div>
 
@@ -101,9 +101,9 @@ export default function FloatingInfoButton() {
             <div className="space-y-2">
               <h4 className="font-medium text-sm">About GridMapper</h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                A powerful web application for creating interactive grid overlays on maps and images. 
-                Perfect for tabletop gaming, urban planning, cartography, and any scenario where you 
-                need precise grid-based measurements and coordinates.
+                A specialized web application designed for creating precise grid overlays on maps and images. 
+                Primarily built for security operations at large events, emergency response coordination, 
+                and any scenario where accurate positioning and grid-based navigation is critical for safety and logistics.
               </p>
             </div>
 
@@ -111,11 +111,11 @@ export default function FloatingInfoButton() {
             <div className="space-y-2">
               <h4 className="font-medium text-sm">Key Features</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Interactive grid system with customizable overlays</li>
-                <li>• Map splitting for large images</li>
-                <li>• High-quality export with slice-specific settings</li>
+                <li>• Precise grid overlays for accurate positioning</li>
+                <li>• Map splitting for large event areas</li>
+                <li>• High-quality export for security briefings</li>
                 <li>• Secure sharing with access controls</li>
-                <li>• Real-time collaboration and cloud storage</li>
+                <li>• Coordinate system for emergency response</li>
               </ul>
             </div>
 
@@ -147,7 +147,7 @@ export default function FloatingInfoButton() {
             {/* Copyright */}
             <div className="pt-4 border-t text-center">
               <p className="text-xs text-muted-foreground">
-                © {new Date().getFullYear()} GridMapper. Built with ❤️ for the mapping community.
+                © {new Date().getFullYear()} GridMapper. Built with ❤️ for security professionals and event organizers.
               </p>
             </div>
           </div>

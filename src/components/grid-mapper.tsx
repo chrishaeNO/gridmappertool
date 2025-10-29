@@ -183,6 +183,7 @@ export default function GridMapper({
         imageSrc={imageSrc}
         imageRef={imageRef}
         onImageLoad={onImageLoad}
+        onImageUpload={onImageUpload}
         imageDimensions={imageDimensions}
         cellSize={cellSize}
         unit={unit}

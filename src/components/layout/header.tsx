@@ -1,4 +1,4 @@
-import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target } from "lucide-react";
+import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target, ZoomIn, ZoomOut, Maximize2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -40,6 +40,13 @@ type HeaderProps = {
   onMobileControlsToggle?: () => void;
   showReferencePoints?: boolean;
   onToggleReferencePoints?: (enabled: boolean) => void;
+  // Zoom controls
+  imageZoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  onFitToScreen?: () => void;
+  // Reference colors
+  referenceColors?: { top: string; right: string; bottom: string; left: string };
+  onReferenceColorsChange?: (colors: { top: string; right: string; bottom: string; left: string }) => void;
 };
 
 function AuthActions() {
@@ -89,7 +96,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,15 +202,49 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
           </div>
         )}
         
+        {/* Zoom Controls - Only show when image is loaded and not read-only */}
+        {hasImage && imageZoom !== undefined && onZoomChange && onFitToScreen && (
+          <div className="hidden md:flex items-center gap-1 px-2 py-1 border rounded-md bg-background">
+            <Button
+              onClick={() => onZoomChange(Math.max(0.1, imageZoom - 0.1))}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Zoom Out"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground px-2 min-w-[3rem] text-center">
+              {Math.round(imageZoom * 100)}%
+            </span>
+            <Button
+              onClick={() => onZoomChange(Math.min(5, imageZoom + 0.1))}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Zoom In"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={onFitToScreen}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 ml-1"
+              title="Fit to Screen"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
         {isEditorPage && onShare && onExport && onSave &&(
             <>
-                <Button onClick={onSave} disabled={!hasImage} variant="outline" className="hidden md:inline-flex">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save
+                <Button onClick={onSave} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Save">
+                    <Save className="h-4 w-4" />
                 </Button>
-                <Button onClick={onShare} disabled={!hasImage} variant="outline" className="hidden md:inline-flex">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share
+                <Button onClick={onShare} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Share">
+                    <Share2 className="h-4 w-4" />
                 </Button>
                 <Button onClick={onExport} disabled={!hasImage} className="hidden md:inline-flex">
                     <Download className="mr-2 h-4 w-4" />
