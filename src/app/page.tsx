@@ -957,7 +957,7 @@ function HomeContent() {
             tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
           }
           
-          // Add slice name and grid info overlay
+          // Add slice name and grid info badge
           tempCtx.save();
           
           // Calculate grid size in mm per cell
@@ -965,32 +965,51 @@ function HomeContent() {
             ? `${cellSize}mm per cell` 
             : `${((cellSize / dpi) * 25.4).toFixed(1)}mm per cell`;
           
-          // Set up text styling
-          const overlayFontSize = Math.max(16, Math.min(24, scaledSliceWidth * 0.02)) * scale;
-          tempCtx.font = `bold ${overlayFontSize}px sans-serif`;
+          // Small badge styling
+          const badgeFontSize = Math.max(10, Math.min(14, scaledSliceWidth * 0.008)) * scale;
+          tempCtx.font = `${badgeFontSize}px sans-serif`;
           tempCtx.textAlign = 'left';
           tempCtx.textBaseline = 'top';
           
-          // Background for text
-          const padding = 8 * scale;
-          const lineHeight = overlayFontSize * 1.2;
+          // Calculate position - offset from reference lines if they exist
+          const badgePadding = 4 * scale;
+          const lineHeight = badgeFontSize * 1.1;
           const textWidth = Math.max(
             tempCtx.measureText(sliceName).width,
             tempCtx.measureText(gridSizeInfo).width
           );
-          const backgroundWidth = textWidth + padding * 2;
-          const backgroundHeight = lineHeight * 2 + padding * 2;
+          const badgeWidth = textWidth + badgePadding * 2;
+          const badgeHeight = lineHeight * 2 + badgePadding * 2;
           
-          // Draw semi-transparent background
-          tempCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          tempCtx.fillRect(padding, padding, backgroundWidth, backgroundHeight);
+          // Position badge outside reference lines if they exist
+          let badgeX = badgePadding;
+          let badgeY = badgePadding;
+          
+          if (showReferencePoints) {
+            // Place badge outside the reference line area
+            badgeX = linePadding + badgePadding;
+            badgeY = linePadding + badgePadding;
+          }
+          
+          // Draw rounded badge background
+          const cornerRadius = 4 * scale;
+          tempCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          tempCtx.beginPath();
+          tempCtx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, cornerRadius);
+          tempCtx.fill();
+          
+          // Draw subtle border
+          tempCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          tempCtx.lineWidth = 1 * scale;
+          tempCtx.stroke();
           
           // Draw slice name
           tempCtx.fillStyle = '#FFFFFF';
-          tempCtx.fillText(sliceName, padding * 2, padding * 2);
+          tempCtx.fillText(sliceName, badgeX + badgePadding, badgeY + badgePadding);
           
-          // Draw grid size info
-          tempCtx.fillText(gridSizeInfo, padding * 2, padding * 2 + lineHeight);
+          // Draw grid size info in slightly dimmer color
+          tempCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          tempCtx.fillText(gridSizeInfo, badgeX + badgePadding, badgeY + badgePadding + lineHeight);
           
           tempCtx.restore();
           
