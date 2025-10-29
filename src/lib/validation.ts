@@ -3,8 +3,7 @@ import { z } from 'zod';
 // Grid map validation schema
 export const gridMapSchema = z.object({
   name: z.string().min(1).max(100),
-  imageUrl: z.string().url().optional(),
-  imageData: z.string().optional(),
+  imageSrc: z.string().optional(),
   splitCols: z.number().int().min(1).max(10),
   splitRows: z.number().int().min(1).max(10),
   cellSizePx: z.number().min(10).max(500),
@@ -34,7 +33,21 @@ export const gridMapSchema = z.object({
       x: z.number(),
       y: z.number()
     })
-  })).optional()
+  })).optional(),
+  // Add missing fields from Prisma schema
+  imageFile: z.object({
+    name: z.string(),
+    size: z.number(),
+    type: z.string()
+  }).optional(),
+  cellSize: z.number().optional(),
+  unit: z.string().optional(),
+  dpi: z.number().optional(),
+  backgroundColor: z.string().optional(),
+  gridThickness: z.number().optional(),
+  showCenterCoords: z.boolean().optional(),
+  showScaleBar: z.boolean().optional(),
+  shared: z.boolean().optional()
 });
 
 // User registration validation

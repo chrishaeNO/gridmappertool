@@ -459,7 +459,7 @@ function HomeContent() {
 
       const mapData = {
         name: mapName,
-        imageData: imageSrc, // Use imageData instead of imageSrc
+        imageSrc, // Use imageSrc to match Prisma schema
         ...(imageFile && {
           imageFile: {
             name: imageFile.name,
@@ -483,11 +483,19 @@ function HomeContent() {
         sliceNames: sliceNamesObject, // Convert array to object
         sliceImageSettings: sliceImageSettings || {},
         shared: isShared,
+        // Add missing fields that Prisma expects
+        cellSize,
+        unit,
+        dpi,
+        backgroundColor,
+        gridThickness,
+        showCenterCoords,
+        showScaleBar,
       };
 
       console.log('MapData being sent to API:', {
         ...mapData,
-        imageData: mapData.imageData ? `[${mapData.imageData.length} chars]` : 'null'
+        imageSrc: mapData.imageSrc ? `[${mapData.imageSrc.length} chars]` : 'null'
       });
 
       if (currentMapId) {
