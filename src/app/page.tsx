@@ -468,17 +468,14 @@ function HomeContent() {
           },
         }),
         imageDimensions, // Now guaranteed to be defined due to validation above
-        cellSizePx, // Use cellSizePx instead of cellSize
         splitCols,
         splitRows,
         gridOffset,
         panOffset,
         imageZoom,
-        showGrid: true, // Add required showGrid field
-        showCoordinates: showCenterCoords, // Map to expected field name
         showReferencePoints,
         gridColor,
-        coordinateColor: labelColor, // Map to expected field name
+        labelColor, // Use labelColor as expected by Prisma
         referenceColors,
         sliceNames: sliceNamesObject, // Convert array to object
         sliceImageSettings: sliceImageSettings || {},

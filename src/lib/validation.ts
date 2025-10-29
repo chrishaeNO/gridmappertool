@@ -6,7 +6,6 @@ export const gridMapSchema = z.object({
   imageSrc: z.string().optional(),
   splitCols: z.number().int().min(1).max(10),
   splitRows: z.number().int().min(1).max(10),
-  cellSizePx: z.number().min(10).max(500),
   gridOffset: z.object({
     x: z.number(),
     y: z.number()
@@ -16,11 +15,9 @@ export const gridMapSchema = z.object({
     y: z.number()
   }),
   imageZoom: z.number().min(0.1).max(10),
-  showGrid: z.boolean(),
-  showCoordinates: z.boolean(),
   showReferencePoints: z.boolean(),
   gridColor: z.string().regex(/^#[0-9A-F]{6}$/i),
-  coordinateColor: z.string().regex(/^#[0-9A-F]{6}$/i),
+  labelColor: z.string().regex(/^#[0-9A-F]{6}$/i),
   referenceColors: z.record(z.string()),
   sliceNames: z.record(z.string()).optional(),
   imageDimensions: z.object({
