@@ -18,6 +18,7 @@ import { Suspense } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import LoginModal from '@/components/auth/login-modal';
 import ShareModal from '@/components/share-modal';
+import ExportDialog from '@/components/export-dialog';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
 import {
   Sheet,
@@ -47,7 +48,6 @@ function HomeContent() {
   const [splitCols, setSplitCols] = useState(1);
   const [splitRows, setSplitRows] = useState(1);
   const [sliceNames, setSliceNames] = useState<string[]>(['Slice 1']);
-  const [selectedSlices, setSelectedSlices] = useState<boolean[]>([true]); // Track which slices are selected for export
   const [showCenterCoords, setShowCenterCoords] = useState(false);
   const [showScaleBar, setShowScaleBar] = useState(true);
   const [isGridCropped, setIsGridCropped] = useState(false);
@@ -68,6 +68,7 @@ function HomeContent() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [showReferencePoints, setShowReferencePoints] = useState(false);
   const [referenceColors, setReferenceColors] = useState({
     top: '#ffffff',    // White
@@ -96,15 +97,6 @@ function HomeContent() {
         newNames.push(`Slice ${newNames.length + 1}`);
       }
       return newNames.slice(0, totalSlices);
-    });
-    
-    // Update selected slices array to match new slice count
-    setSelectedSlices(prev => {
-      const newSelected = [...prev];
-      while (newSelected.length < totalSlices) {
-        newSelected.push(true); // New slices are selected by default
-      }
-      return newSelected.slice(0, totalSlices);
     });
   }, [splitCols, splitRows]);
 
@@ -600,7 +592,6 @@ function HomeContent() {
     setSplitCols(1);
     setSplitRows(1);
     setSliceNames(['Slice 1']);
-    setSelectedSlices([true]);
     setShowCenterCoords(false);
     setShowScaleBar(true);
     setIsGridCropped(false);
@@ -692,10 +683,15 @@ function HomeContent() {
     }
   };
 
-  const handleExport = useCallback(async () => {
+  const handleExportClick = useCallback(() => {
+    if (!imageSrc || !imageDimensions) return;
+    setShowExportDialog(true);
+  }, [imageSrc, imageDimensions]);
+
+  const handleExport = useCallback(async (exportSelectedSlices: boolean[]) => {
     if (!imageSrc || !imageDimensions) return;
     
-    const selectedCount = (selectedSlices || []).filter(selected => selected).length;
+    const selectedCount = exportSelectedSlices.filter(selected => selected).length;
     const totalSlices = splitCols * splitRows;
     
     if (selectedCount === 0) {
@@ -740,7 +736,7 @@ function HomeContent() {
           const sliceIndex = row * splitCols + col;
           
           // Skip if this slice is not selected for export
-          if (!(selectedSlices || [])[sliceIndex]) {
+          if (!exportSelectedSlices[sliceIndex]) {
             continue;
           }
           
@@ -999,7 +995,6 @@ function HomeContent() {
     splitCols,
     splitRows,
     sliceNames,
-    selectedSlices,
     showReferencePoints,
     referenceColors,
     mapName
@@ -1012,7 +1007,7 @@ function HomeContent() {
   return (
     <div className="flex flex-col h-dvh bg-background text-foreground">
       <Header
-        onExport={handleExport}
+        onExport={handleExportClick}
         onShare={handleShare}
         onSave={saveMap}
         onNewMap={handleNewMap}
@@ -1073,8 +1068,6 @@ function HomeContent() {
             showReferencePoints={showReferencePoints}
             referenceColors={referenceColors}
             setReferenceColors={setReferenceColors}
-            selectedSlices={selectedSlices}
-            setSelectedSlices={setSelectedSlices}
             {...gridMapperProps}
             setSliceNames={(index: number, newName: string) => {
               const newSliceNames = [...sliceNames];
@@ -1099,6 +1092,16 @@ function HomeContent() {
         }}
         title="Sign In to Save Your Map"
         description="Please sign in to save and share your maps. Your work will be preserved."
+      />
+      
+      {/* Export Dialog */}
+      <ExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        sliceNames={sliceNames}
+        splitCols={splitCols}
+        splitRows={splitRows}
+        onExport={handleExport}
       />
       
       {/* Share Modal */}
