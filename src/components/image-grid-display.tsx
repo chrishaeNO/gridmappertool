@@ -213,11 +213,11 @@ function ImageGridDisplay({
     
     // Grid er croppet hvis:
     // - Vi ikke kan få noen hele celler, ELLER
-    // - Det er betydelig restplass (mer enn 10% av en celle) som ikke brukes
-    const cellThreshold = cellSizePx * 0.1; // 10% av en celle
+    // - Det er nok plass til minst en hel celle til (mer enn 90% av en celle)
+    const cellThreshold = cellSizePx * 0.9; // 90% av en celle - mer realistisk terskel
     const isCropped = numCols === 0 || numRows === 0 || 
-                     remainingWidth > cellThreshold || 
-                     remainingHeight > cellThreshold;
+                     remainingWidth >= cellThreshold || 
+                     remainingHeight >= cellThreshold;
     
     // Final validation of calculated values
     const finalNumCols = numCols + 1;

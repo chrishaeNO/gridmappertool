@@ -286,14 +286,6 @@ export default function ControlPanel({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 space-y-4">
-                  {isGridCropped && (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        Grid cells are being cropped. Consider adjusting the cell size or grid offset.
-                      </AlertDescription>
-                    </Alert>
-                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="cell-size">Cell Size (supports decimals)</Label>

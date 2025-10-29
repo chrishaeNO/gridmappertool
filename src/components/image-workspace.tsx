@@ -471,9 +471,7 @@ export default function ImageWorkspace({
             // Add drag and drop styling when no image is loaded
             !imageSrc && onImageUpload && isDragOver ? 'bg-primary/5' : ''
           )}
-          style={{ 
-            paddingBottom: showScaleBar ? '80px' : '0px'
-          }}
+          style={{}}
           // Add drag and drop events when no image is loaded
           {...(!imageSrc && onImageUpload ? dragProps : {})}
           onMouseMove={disablePanning ? undefined : handleMouseMove}

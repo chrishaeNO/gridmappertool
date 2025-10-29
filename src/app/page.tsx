@@ -756,15 +756,23 @@ function HomeContent() {
           let extraHeight = 0;
           let linePadding = 0;
           
+          // Add extra spacing for badge when no reference points
+          let badgeSpacing = 0;
+          
           if (showReferencePoints) {
             linePadding = 20 * scale; // Økt fra 15px til 20px for mer spacing
             const lineThickness = 8 * scale; // Nøyaktig 8px som på skjermen
             extraWidth = (linePadding * 1.5) + lineThickness; // Ekstra høyre margin for rød linje
             extraHeight = (linePadding * 1.5) + lineThickness; // Ekstra bunn margin for sort linje
+          } else {
+            // Add spacing at top for badge when no reference lines
+            badgeSpacing = 16 * scale; // Space for badge above labels
           }
           
-          tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth;
-          tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight;
+          // Add grid line thickness to ensure boundary lines are fully visible
+          const scaledGridThickness = gridThickness * scale;
+          tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
+          tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight + badgeSpacing + scaledGridThickness;
           
           tempCtx.fillStyle = backgroundColor;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -777,9 +785,9 @@ function HomeContent() {
           const sliceX = col * sliceWidth;
           const sliceY = row * sliceHeight;
 
-          // Offset image position to account for reference line margins
+          // Offset image position to account for reference line margins and badge spacing
           const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
-          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : 0);
+          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing);
           
           // For slice-specific settings, we need to draw the image differently
           if (sliceSettings && (sliceSettings.zoom !== imageZoom || 
@@ -837,12 +845,21 @@ function HomeContent() {
           const startColIndex = Math.max(0, totalColsFromStart);
           const startRowIndex = Math.max(0, totalRowsFromStart);
           
-          const numColsToDraw = Math.ceil((scaledSliceWidth - firstColOffset + 1e-9) / scaledCellSize);
-          const numRowsToDraw = Math.ceil((scaledSliceHeight - firstRowOffset + 1e-9) / scaledCellSize);
+          // Use same precise calculations as the display component
+          const actualGridWidth = scaledSliceWidth;
+          const actualGridHeight = scaledSliceHeight;
           
-          // For labels, we need the number of actual cells, not grid lines
-          const numCellCols = Math.floor((scaledSliceWidth - firstColOffset + 1e-9) / scaledCellSize);
-          const numCellRows = Math.floor((scaledSliceHeight - firstRowOffset + 1e-9) / scaledCellSize);
+          // Use EXACT same logic as image-grid-display.tsx for consistency
+          const baseCellCols = Math.floor((actualGridWidth - firstColOffset) / scaledCellSize);
+          const baseCellRows = Math.floor((actualGridHeight - firstRowOffset) / scaledCellSize);
+          
+          // Match display component: finalNumCols = numCols + 1, finalNumRows = numRows + 1
+          const numCellCols = baseCellCols + 1;
+          const numCellRows = baseCellRows + 1;
+          
+          // For drawing grid lines, we need one more line than the base cells
+          const numColsToDraw = baseCellCols + 1;
+          const numRowsToDraw = baseCellRows + 1;
           
           tempCtx.save();
           tempCtx.beginPath();
@@ -854,24 +871,38 @@ function HomeContent() {
           tempCtx.strokeStyle = gridColor;
           tempCtx.lineWidth = gridThickness * scale;
           
-          for (let i = 0; i < numColsToDraw; i++) {
+          // Draw grid lines including boundary lines
+          for (let i = 0; i <= numColsToDraw; i++) {
               const x = firstColOffset + i * scaledCellSize;
-              if (x >= 0 && x <= scaledSliceWidth) {
+              if (x >= 0 && x <= actualGridWidth) {
                   tempCtx.beginPath();
                   tempCtx.moveTo(x, 0);
-                  tempCtx.lineTo(x, scaledSliceHeight);
+                  tempCtx.lineTo(x, actualGridHeight);
                   tempCtx.stroke();
               }
           }
-          for (let i = 0; i < numRowsToDraw; i++) {
+          for (let i = 0; i <= numRowsToDraw; i++) {
               const y = firstRowOffset + i * scaledCellSize;
-               if (y >= 0 && y <= scaledSliceHeight) {
+               if (y >= 0 && y <= actualGridHeight) {
                   tempCtx.beginPath();
                   tempCtx.moveTo(0, y);
-                  tempCtx.lineTo(scaledSliceWidth, y);
+                  tempCtx.lineTo(actualGridWidth, y);
                   tempCtx.stroke();
               }
           }
+          
+          // Add boundary lines at right and bottom edges
+          // Right edge line
+          tempCtx.beginPath();
+          tempCtx.moveTo(actualGridWidth, 0);
+          tempCtx.lineTo(actualGridWidth, actualGridHeight);
+          tempCtx.stroke();
+          
+          // Bottom edge line
+          tempCtx.beginPath();
+          tempCtx.moveTo(0, actualGridHeight);
+          tempCtx.lineTo(actualGridWidth, actualGridHeight);
+          tempCtx.stroke();
           tempCtx.restore();
 
           if (exportLabelSize > 0) {
@@ -885,10 +916,10 @@ function HomeContent() {
             for (let i = 0; i < numCellCols; i++) {
                 const xOnSlice = firstColOffset + i * scaledCellSize;
                 
-                if (xOnSlice >= -scaledCellSize && xOnSlice <= scaledSliceWidth) {
+                if (xOnSlice >= -scaledCellSize && xOnSlice <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
                     // Top labels
-                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : 0) + exportLabelSize / 2);
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
                 }
             }
             
@@ -896,7 +927,7 @@ function HomeContent() {
             for (let i = 0; i < numCellCols; i++) {
                 const xOnSlice = firstColOffset + i * scaledCellSize;
                 
-                if (xOnSlice >= -scaledCellSize && xOnSlice <= scaledSliceWidth) {
+                if (xOnSlice >= -scaledCellSize && xOnSlice <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
                     // Bottom labels - samme X som topp, men Y i bunn label-området
                     tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
@@ -907,7 +938,7 @@ function HomeContent() {
             for (let i = 0; i < numCellRows; i++) {
                 const yOnSlice = firstRowOffset + i * scaledCellSize;
                 
-                if (yOnSlice >= -scaledCellSize && yOnSlice <= scaledSliceHeight) {
+                if (yOnSlice >= -scaledCellSize && yOnSlice <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
                     // Left labels
                     tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
@@ -918,7 +949,7 @@ function HomeContent() {
             for (let i = 0; i < numCellRows; i++) {
                 const yOnSlice = firstRowOffset + i * scaledCellSize;
                 
-                if (yOnSlice >= -scaledCellSize && yOnSlice <= scaledSliceHeight) {
+                if (yOnSlice >= -scaledCellSize && yOnSlice <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
                     // Right labels - samme Y som venstre, men X i høyre label-området
                     tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
@@ -965,51 +996,45 @@ function HomeContent() {
             ? `${cellSize}mm per cell` 
             : `${((cellSize / dpi) * 25.4).toFixed(1)}mm per cell`;
           
-          // Small badge styling
-          const badgeFontSize = Math.max(10, Math.min(14, scaledSliceWidth * 0.008)) * scale;
+          // Very small badge styling for edge placement
+          const badgeFontSize = Math.max(8, Math.min(10, scaledSliceWidth * 0.004)) * scale;
           tempCtx.font = `${badgeFontSize}px sans-serif`;
-          tempCtx.textAlign = 'left';
-          tempCtx.textBaseline = 'top';
+          tempCtx.textAlign = 'center';
+          tempCtx.textBaseline = 'middle';
           
-          // Calculate position - offset from reference lines if they exist
-          const badgePadding = 4 * scale;
-          const lineHeight = badgeFontSize * 1.1;
-          const textWidth = Math.max(
-            tempCtx.measureText(sliceName).width,
-            tempCtx.measureText(gridSizeInfo).width
-          );
+          // Calculate position - single line format
+          const badgePadding = 2 * scale;
+          
+          // Combine slice name and grid info on one line
+          const combinedText = `${sliceName} • ${gridSizeInfo}`;
+          const textWidth = tempCtx.measureText(combinedText).width;
           const badgeWidth = textWidth + badgePadding * 2;
-          const badgeHeight = lineHeight * 2 + badgePadding * 2;
+          const badgeHeight = badgeFontSize + badgePadding * 2;
           
-          // Position badge outside reference lines if they exist
-          let badgeX = badgePadding;
-          let badgeY = badgePadding;
+          // Position badge in the outer edge area
+          let badgeX, badgeY;
           
           if (showReferencePoints) {
-            // Place badge outside the reference line area
-            badgeX = linePadding + badgePadding;
-            badgeY = linePadding + badgePadding;
+            // Place badge in the very top edge, between canvas edge and white reference line
+            // This is in the margin space above the reference line
+            badgeX = (tempCanvas.width - badgeWidth) / 2; // Center horizontally
+            badgeY = badgePadding; // Very top edge with minimal padding
+          } else {
+            // Without reference points, place badge above the labels (between labels and canvas edge)
+            badgeX = (tempCanvas.width - badgeWidth) / 2; // Center horizontally
+            badgeY = (badgeSpacing - badgeHeight) / 2; // Center in the top spacing area
           }
           
-          // Draw rounded badge background
-          const cornerRadius = 4 * scale;
-          tempCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          // Draw clean badge background (white to match reference line)
+          const cornerRadius = 2 * scale;
+          tempCtx.fillStyle = '#FFFFFF';
           tempCtx.beginPath();
           tempCtx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, cornerRadius);
           tempCtx.fill();
           
-          // Draw subtle border
-          tempCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-          tempCtx.lineWidth = 1 * scale;
-          tempCtx.stroke();
-          
-          // Draw slice name
-          tempCtx.fillStyle = '#FFFFFF';
-          tempCtx.fillText(sliceName, badgeX + badgePadding, badgeY + badgePadding);
-          
-          // Draw grid size info in slightly dimmer color
-          tempCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-          tempCtx.fillText(gridSizeInfo, badgeX + badgePadding, badgeY + badgePadding + lineHeight);
+          // Draw combined text (black on white)
+          tempCtx.fillStyle = '#000000';
+          tempCtx.fillText(combinedText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
           
           tempCtx.restore();
           
