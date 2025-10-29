@@ -246,11 +246,11 @@ function HomeContent() {
       
       // Load image to get dimensions - wait for it to complete
       const img = new Image();
-      const dimensions = await new Promise<{naturalWidth: number, naturalHeight: number}>((resolve) => {
+      const dimensions = await new Promise<{width: number, height: number}>((resolve) => {
         img.onload = () => {
           resolve({
-            naturalWidth: img.naturalWidth,
-            naturalHeight: img.naturalHeight
+            width: img.naturalWidth,
+            height: img.naturalHeight
           });
         };
         img.src = dataUrl;
@@ -687,7 +687,7 @@ function HomeContent() {
     const zip = new JSZip();
     const EXPORT_DPI = 300;
     const scale = EXPORT_DPI / dpi;
-    const { naturalWidth, naturalHeight } = imageDimensions;
+    const { width, height } = imageDimensions;
 
     const cellSizePx = unit === 'px' ? cellSize : (cellSize / 25.4) * dpi;
     
@@ -712,8 +712,8 @@ function HomeContent() {
           const sliceIndex = row * splitCols + col;
           const sliceName = sliceNames[sliceIndex] || `slice-${row}-${col}`;
           
-          const sliceWidth = naturalWidth / splitCols;
-          const sliceHeight = naturalHeight / splitRows;
+          const sliceWidth = width / splitCols;
+          const sliceHeight = height / splitRows;
           const scaledSliceWidth = sliceWidth * scale;
           const scaledSliceHeight = sliceHeight * scale;
 
@@ -764,8 +764,8 @@ function HomeContent() {
             
             // Calculate what part of the original image to show based on slice settings
             // This mimics the CSS background-position behavior
-            const scaledImageWidth = naturalWidth * effectiveZoom;
-            const scaledImageHeight = naturalHeight * effectiveZoom;
+            const scaledImageWidth = width * effectiveZoom;
+            const scaledImageHeight = height * effectiveZoom;
             
             // Calculate the position offset
             const backgroundPosX = -((sliceX * effectiveZoom) - effectivePanOffset.x);
@@ -774,7 +774,7 @@ function HomeContent() {
             // Draw the full scaled image at the calculated position
             tempCtx.drawImage(
                 img,
-                0, 0, naturalWidth, naturalHeight,
+                0, 0, width, height,
                 imageOffsetX + (backgroundPosX * scale), imageOffsetY + (backgroundPosY * scale),
                 scaledImageWidth * scale, scaledImageHeight * scale
             );

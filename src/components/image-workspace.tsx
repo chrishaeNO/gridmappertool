@@ -13,8 +13,8 @@ import { formatFileSize } from '@/utils/image-compression';
 import './shared-map-styles.css';
 
 export type ImageDimensions = {
-  naturalWidth: number;
-  naturalHeight: number;
+  width: number;
+  height: number;
 };
 
 type ImageWorkspaceProps = {
@@ -189,8 +189,8 @@ export default function ImageWorkspace({
     const labelSize = isReadOnly ? 0 : Math.min(25, cellSizePx * 0.4); // No labels on shared maps
     const sliceSpacing = splitCols * splitRows > 1 ? 60 : 0; // Space between slices (increased for better separation)
 
-    const contentWidth = imageDimensions.naturalWidth + splitCols * labelSize + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for left/right reference lines + padding for right edge
-    const contentHeight = imageDimensions.naturalHeight + splitRows * labelSize + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for top/bottom reference lines + padding for bottom edge
+    const contentWidth = imageDimensions.width + splitCols * labelSize + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for left/right reference lines + padding for right edge
+    const contentHeight = imageDimensions.height + splitRows * labelSize + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for top/bottom reference lines + padding for bottom edge
     
     const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
     
@@ -288,8 +288,8 @@ export default function ImageWorkspace({
     const mouseXInContent = mouseX / scale;
     const mouseYInContent = mouseY / scale;
 
-    const sliceWidth = imageDimensions.naturalWidth / splitCols;
-    const sliceHeight = imageDimensions.naturalHeight / splitRows;
+    const sliceWidth = imageDimensions.width / splitCols;
+    const sliceHeight = imageDimensions.height / splitRows;
     const sliceSpacing = splitCols * splitRows > 1 ? 60 : 0; // Space between slices (increased for better separation)
 
     const sliceCol = Math.floor(mouseXInContent / (sliceWidth + labelSize + sliceSpacing));
@@ -309,7 +309,7 @@ export default function ImageWorkspace({
     const gridMouseX = (imageX - panOffset.x) / imageZoom - gridOffset.x;
     const gridMouseY = (imageY - panOffset.y) / imageZoom - gridOffset.y;
     
-    if (gridMouseX < 0 || gridMouseY < 0 || imageX > imageDimensions.naturalWidth || imageY > imageDimensions.naturalHeight) {
+    if (gridMouseX < 0 || gridMouseY < 0 || imageX > imageDimensions.width || imageY > imageDimensions.height) {
       onHover(null);
       return;
     }
@@ -317,7 +317,7 @@ export default function ImageWorkspace({
     const colIndex = Math.floor(gridMouseX / cellSizePx);
     const rowIndex = Math.floor(gridMouseY / cellSizePx);
 
-    const totalCols = Math.floor((imageDimensions.naturalWidth - gridOffset.x) / cellSizePx);
+    const totalCols = Math.floor((imageDimensions.width - gridOffset.x) / cellSizePx);
 
     if (colIndex >= 0 && colIndex < totalCols + 1 && rowIndex >= 0) {
       const col = getColumnLabel(colIndex);
@@ -546,8 +546,8 @@ export default function ImageWorkspace({
                         onLoad={(e) => {
                             const img = e.target as HTMLImageElement;
                             onImageLoad({
-                                naturalWidth: img.naturalWidth,
-                                naturalHeight: img.naturalHeight,
+                                width: img.width,
+                                height: img.height,
                             });
                         }}
                     />

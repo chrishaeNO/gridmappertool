@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { getColumnLabel } from '@/utils/columnLabels';
 
 export type ImageDimensions = {
-  naturalWidth: number;
-  naturalHeight: number;
+  width: number;
+  height: number;
 };
 
 type ImageGridDisplayProps = {
@@ -158,10 +158,10 @@ function ImageGridDisplay({
   const gridData = useMemo(() => {
     if (!imageDimensions || cellSize <= 0 || isNaN(cellSize)) return null;
     
-    const { naturalWidth, naturalHeight } = imageDimensions;
+    const { width, height } = imageDimensions;
     
     // Validate dimensions
-    if (!naturalWidth || !naturalHeight || isNaN(naturalWidth) || isNaN(naturalHeight)) return null;
+    if (!width || !height || isNaN(width) || isNaN(height)) return null;
     
     const { rows: totalRows, cols: totalCols } = totalGrids;
     const { row: rowIndex, col: colIndex } = gridIndex;
@@ -170,8 +170,8 @@ function ImageGridDisplay({
     if (!totalRows || !totalCols || isNaN(totalRows) || isNaN(totalCols) || totalRows <= 0 || totalCols <= 0) return null;
     if (isNaN(rowIndex) || isNaN(colIndex) || rowIndex < 0 || colIndex < 0) return null;
 
-    const sliceWidth = naturalWidth / totalCols;
-    const sliceHeight = naturalHeight / totalRows;
+    const sliceWidth = width / totalCols;
+    const sliceHeight = height / totalRows;
 
     const sliceLeft = colIndex * sliceWidth;
     const sliceTop = rowIndex * sliceHeight;
@@ -607,7 +607,7 @@ function ImageGridDisplay({
                     className="absolute"
                     style={{
                         backgroundImage: `url(${imageSrc})`,
-                        backgroundSize: `${imageDimensions.naturalWidth * effectiveZoom}px ${imageDimensions.naturalHeight * effectiveZoom}px`,
+                        backgroundSize: `${imageDimensions.width * effectiveZoom}px ${imageDimensions.height * effectiveZoom}px`,
                         backgroundPosition: `${backgroundPositionX} ${backgroundPositionY}`,
                         left: 0,
                         top: 0,
