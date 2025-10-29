@@ -420,9 +420,18 @@ function HomeContent() {
     }
 
     try {
+      // Convert sliceNames array to object format expected by API
+      const sliceNamesObject = sliceNames.reduce((acc, name, index) => {
+        acc[index.toString()] = name;
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Calculate cellSizePx from cellSize and unit
+      const cellSizePx = unit === 'px' ? cellSize : (cellSize / 25.4) * dpi;
+
       const mapData = {
         name: mapName,
-        imageSrc,
+        imageData: imageSrc, // Use imageData instead of imageSrc
         ...(imageFile && {
           imageFile: {
             name: imageFile.name,
@@ -430,26 +439,22 @@ function HomeContent() {
             type: imageFile.type,
           },
         }),
-        imageDimensions,
-        cellSize,
-        unit,
-        dpi,
-        gridOffset,
-        gridColor,
-        labelColor,
-        backgroundColor,
-        gridThickness,
+        imageDimensions: imageDimensions || { width: 1, height: 1 }, // Ensure it's always defined with positive values
+        cellSizePx, // Use cellSizePx instead of cellSize
         splitCols,
         splitRows,
-        sliceNames,
-        showCenterCoords,
-        showScaleBar,
-        imageZoom,
+        gridOffset,
         panOffset,
-        sliceImageSettings,
-        shared: isShared,
+        imageZoom,
+        showGrid: true, // Add required showGrid field
+        showCoordinates: showCenterCoords, // Map to expected field name
         showReferencePoints,
+        gridColor,
+        coordinateColor: labelColor, // Map to expected field name
         referenceColors,
+        sliceNames: sliceNamesObject, // Convert array to object
+        sliceImageSettings: sliceImageSettings || {},
+        shared: isShared,
       };
 
       if (currentMapId) {
