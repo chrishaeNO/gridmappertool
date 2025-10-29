@@ -695,7 +695,7 @@ function HomeContent() {
   const handleExport = useCallback(async () => {
     if (!imageSrc || !imageDimensions) return;
     
-    const selectedCount = selectedSlices.filter(selected => selected).length;
+    const selectedCount = (selectedSlices || []).filter(selected => selected).length;
     const totalSlices = splitCols * splitRows;
     
     if (selectedCount === 0) {
@@ -740,7 +740,7 @@ function HomeContent() {
           const sliceIndex = row * splitCols + col;
           
           // Skip if this slice is not selected for export
-          if (!selectedSlices[sliceIndex]) {
+          if (!(selectedSlices || [])[sliceIndex]) {
             continue;
           }
           

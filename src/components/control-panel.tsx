@@ -308,9 +308,9 @@ export default function ControlPanel({
                           <div key={index} className="flex items-center space-x-2">
                             <Checkbox
                               id={`slice-${index}`}
-                              checked={selectedSlices[index] || false}
+                              checked={selectedSlices?.[index] || false}
                               onCheckedChange={(checked) => {
-                                const newSelected = [...selectedSlices];
+                                const newSelected = [...(selectedSlices || [])];
                                 newSelected[index] = checked === true;
                                 setSelectedSlices(newSelected);
                               }}
