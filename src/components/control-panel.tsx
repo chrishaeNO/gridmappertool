@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Accordion,
   AccordionContent,
@@ -52,6 +53,8 @@ type ControlPanelProps = {
   setSplitRows: Dispatch<SetStateAction<number>>;
   sliceNames: string[];
   setSliceNames: (index: number, newName: string) => void;
+  selectedSlices: boolean[];
+  setSelectedSlices: Dispatch<SetStateAction<boolean[]>>;
   showCenterCoords: boolean;
   setShowCenterCoords: Dispatch<SetStateAction<boolean>>;
   showScaleBar: boolean;
@@ -110,6 +113,8 @@ export default function ControlPanel({
   setSplitRows,
   sliceNames,
   setSliceNames,
+  selectedSlices,
+  setSelectedSlices,
   showCenterCoords,
   setShowCenterCoords,
   showScaleBar,
@@ -273,6 +278,55 @@ export default function ControlPanel({
                       />
                     </div>
                   </div>
+                  
+                  {/* Slice Selection for Export */}
+                  {(splitCols > 1 || splitRows > 1) && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Export Selection</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedSlices(new Array(splitCols * splitRows).fill(true))}
+                            className="h-7 px-2 text-xs"
+                          >
+                            All
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedSlices(new Array(splitCols * splitRows).fill(false))}
+                            className="h-7 px-2 text-xs"
+                          >
+                            None
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${splitCols}, 1fr)` }}>
+                        {sliceNames.map((name, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`slice-${index}`}
+                              checked={selectedSlices[index] || false}
+                              onCheckedChange={(checked) => {
+                                const newSelected = [...selectedSlices];
+                                newSelected[index] = checked === true;
+                                setSelectedSlices(newSelected);
+                              }}
+                            />
+                            <Label 
+                              htmlFor={`slice-${index}`}
+                              className="text-xs truncate cursor-pointer"
+                              title={name}
+                            >
+                              {name}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </AccordionContent>
               </AccordionItem>
 

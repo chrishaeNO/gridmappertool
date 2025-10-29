@@ -47,6 +47,7 @@ function HomeContent() {
   const [splitCols, setSplitCols] = useState(1);
   const [splitRows, setSplitRows] = useState(1);
   const [sliceNames, setSliceNames] = useState<string[]>(['Slice 1']);
+  const [selectedSlices, setSelectedSlices] = useState<boolean[]>([true]); // Track which slices are selected for export
   const [showCenterCoords, setShowCenterCoords] = useState(false);
   const [showScaleBar, setShowScaleBar] = useState(true);
   const [isGridCropped, setIsGridCropped] = useState(false);
@@ -95,6 +96,15 @@ function HomeContent() {
         newNames.push(`Slice ${newNames.length + 1}`);
       }
       return newNames.slice(0, totalSlices);
+    });
+    
+    // Update selected slices array to match new slice count
+    setSelectedSlices(prev => {
+      const newSelected = [...prev];
+      while (newSelected.length < totalSlices) {
+        newSelected.push(true); // New slices are selected by default
+      }
+      return newSelected.slice(0, totalSlices);
     });
   }, [splitCols, splitRows]);
 
@@ -590,6 +600,7 @@ function HomeContent() {
     setSplitCols(1);
     setSplitRows(1);
     setSliceNames(['Slice 1']);
+    setSelectedSlices([true]);
     setShowCenterCoords(false);
     setShowScaleBar(true);
     setIsGridCropped(false);
@@ -684,9 +695,21 @@ function HomeContent() {
   const handleExport = useCallback(async () => {
     if (!imageSrc || !imageDimensions) return;
     
+    const selectedCount = selectedSlices.filter(selected => selected).length;
+    const totalSlices = splitCols * splitRows;
+    
+    if (selectedCount === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Slices Selected',
+        description: 'Please select at least one slice to export.',
+      });
+      return;
+    }
+    
     toast({
       title: 'Exporting Slices...',
-      description: 'Generating and compressing your map slices.',
+      description: `Generating and compressing ${selectedCount} of ${totalSlices} slices.`,
     });
 
     const zip = new JSZip();
@@ -715,6 +738,12 @@ function HomeContent() {
       for (let row = 0; row < splitRows; row++) {
         for (let col = 0; col < splitCols; col++) {
           const sliceIndex = row * splitCols + col;
+          
+          // Skip if this slice is not selected for export
+          if (!selectedSlices[sliceIndex]) {
+            continue;
+          }
+          
           const sliceName = sliceNames[sliceIndex] || `slice-${row}-${col}`;
           
           const sliceWidth = width / splitCols;
@@ -970,6 +999,7 @@ function HomeContent() {
     splitCols,
     splitRows,
     sliceNames,
+    selectedSlices,
     showReferencePoints,
     referenceColors,
     mapName
@@ -1043,6 +1073,8 @@ function HomeContent() {
             showReferencePoints={showReferencePoints}
             referenceColors={referenceColors}
             setReferenceColors={setReferenceColors}
+            selectedSlices={selectedSlices}
+            setSelectedSlices={setSelectedSlices}
             {...gridMapperProps}
             setSliceNames={(index: number, newName: string) => {
               const newSliceNames = [...sliceNames];
