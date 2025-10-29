@@ -49,8 +49,8 @@ const InteractiveGrid = ({ mapData }: InteractiveGridProps) => {
   const labelSize = Math.min(25, cellSizePx * 0.4);
   const labelFontSize = Math.min(12, cellSizePx * 0.3);
 
-  const numCols = Math.floor((imageDimensions.naturalWidth - gridOffset.x) / cellSizePx);
-  const numRows = Math.floor((imageDimensions.naturalHeight - gridOffset.y) / cellSizePx);
+  const numCols = Math.max(0, Math.floor((imageDimensions.naturalWidth - gridOffset.x) / cellSizePx));
+  const numRows = Math.max(0, Math.floor((imageDimensions.naturalHeight - gridOffset.y) / cellSizePx));
 
   const fitAndCenter = useCallback(() => {
     if (!imageDimensions || !containerRef.current || !contentRef.current) return;

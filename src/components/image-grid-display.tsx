@@ -188,8 +188,8 @@ function ImageGridDisplay({
     const firstColOffset = gridStartXInSlice < 0 ? (Math.ceil(Math.abs(gridStartXInSlice) / cellSizePx) * cellSizePx) + gridStartXInSlice : gridStartXInSlice % cellSizePx;
     const firstRowOffset = gridStartYInSlice < 0 ? (Math.ceil(Math.abs(gridStartYInSlice) / cellSizePx) * cellSizePx) + gridStartYInSlice : gridStartYInSlice % cellSizePx;
     
-    const numCols = Math.floor((sliceWidth - firstColOffset) / cellSizePx);
-    const numRows = Math.floor((sliceHeight - firstRowOffset) / cellSizePx);
+    const numCols = Math.max(0, Math.floor((sliceWidth - firstColOffset) / cellSizePx));
+    const numRows = Math.max(0, Math.floor((sliceHeight - firstRowOffset) / cellSizePx));
     
     // Beregn startindeks for koordinater basert på slice-posisjon og grid-offset
     // Dette sikrer at hver slice har unike, kontinuerlige koordinater

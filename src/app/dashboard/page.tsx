@@ -186,7 +186,16 @@ function MapList() {
 
       if (response.ok) {
         const data = await response.json();
-        setMaps(data);
+        // Ensure data is an array before setting it
+        if (Array.isArray(data)) {
+          setMaps(data);
+        } else {
+          console.error('API returned non-array data:', data);
+          setMaps([]);
+        }
+      } else {
+        console.error('Failed to fetch maps:', response.status);
+        setMaps([]);
       }
     } catch (error) {
       console.error('Error fetching maps:', error);

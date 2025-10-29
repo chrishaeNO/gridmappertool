@@ -33,8 +33,14 @@ export default function FloatingInfoButton() {
           setVersion(release.tag_name || release.name || 'v1.0.0');
           setReleaseDate(new Date(release.published_at).toLocaleDateString());
           setReleaseUrl(release.html_url);
+        } else if (response.status === 404) {
+          // No releases found - this is normal for new repositories
+          console.log('No releases found in repository');
+          setVersion('v1.0.0');
+          setReleaseDate(new Date().toLocaleDateString());
         } else {
-          // Fallback if API fails
+          // Other API errors
+          console.log('GitHub API error:', response.status);
           setVersion('v1.0.0');
           setReleaseDate(new Date().toLocaleDateString());
         }
