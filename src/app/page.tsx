@@ -243,6 +243,17 @@ function HomeContent() {
 
   const processImage = async (dataUrl: string) => {
       setImageSrc(dataUrl);
+      
+      // Load image to get dimensions
+      const img = new Image();
+      img.onload = () => {
+        setImageDimensions({
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight
+        });
+      };
+      img.src = dataUrl;
+      
       if (isMobileSheetOpen) {
         setIsMobileSheetOpen(false);
       }
@@ -419,6 +430,15 @@ function HomeContent() {
       return;
     }
 
+    if (!imageDimensions) {
+      toast({
+        variant: 'destructive',
+        title: 'Image Loading',
+        description: 'Please wait for the image to finish loading before saving.',
+      });
+      return;
+    }
+
     try {
       // Convert sliceNames array to object format expected by API
       const sliceNamesObject = sliceNames.reduce((acc, name, index) => {
@@ -439,7 +459,7 @@ function HomeContent() {
             type: imageFile.type,
           },
         }),
-        imageDimensions: imageDimensions || { width: 1, height: 1 }, // Ensure it's always defined with positive values
+        imageDimensions, // Now guaranteed to be defined due to validation above
         cellSizePx, // Use cellSizePx instead of cellSize
         splitCols,
         splitRows,
