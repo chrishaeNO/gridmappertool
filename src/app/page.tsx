@@ -34,8 +34,8 @@ function HomeContent() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageDimensions, setImageDimensions] =
     useState<ImageDimensions | null>(null);
-  const [cellSize, setCellSize] = useState<number>(50.0);
-  const [unit, setUnit] = useState<'px' | 'mm'>('px');
+  const [cellSize, setCellSize] = useState<number>(5.5);
+  const [unit, setUnit] = useState<'px' | 'mm'>('mm');
   const [dpi, setDpi] = useState<number>(96);
   const [gridOffset, setGridOffset] = useState<{x: number; y: number}>({
     x: 0,
@@ -581,8 +581,8 @@ function HomeContent() {
     setImageSrc(null);
     setImageFile(null);
     setImageDimensions(null);
-    setCellSize(50.0);
-    setUnit('px');
+    setCellSize(5.5);
+    setUnit('mm');
     setDpi(96);
     setGridOffset({ x: 0, y: 0 });
     setGridColor('#FFFFFF');
@@ -956,6 +956,43 @@ function HomeContent() {
             const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
             tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
           }
+          
+          // Add slice name and grid info overlay
+          tempCtx.save();
+          
+          // Calculate grid size in mm per cell
+          const gridSizeInfo = unit === 'mm' 
+            ? `${cellSize}mm per cell` 
+            : `${((cellSize / dpi) * 25.4).toFixed(1)}mm per cell`;
+          
+          // Set up text styling
+          const overlayFontSize = Math.max(16, Math.min(24, scaledSliceWidth * 0.02)) * scale;
+          tempCtx.font = `bold ${overlayFontSize}px sans-serif`;
+          tempCtx.textAlign = 'left';
+          tempCtx.textBaseline = 'top';
+          
+          // Background for text
+          const padding = 8 * scale;
+          const lineHeight = overlayFontSize * 1.2;
+          const textWidth = Math.max(
+            tempCtx.measureText(sliceName).width,
+            tempCtx.measureText(gridSizeInfo).width
+          );
+          const backgroundWidth = textWidth + padding * 2;
+          const backgroundHeight = lineHeight * 2 + padding * 2;
+          
+          // Draw semi-transparent background
+          tempCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          tempCtx.fillRect(padding, padding, backgroundWidth, backgroundHeight);
+          
+          // Draw slice name
+          tempCtx.fillStyle = '#FFFFFF';
+          tempCtx.fillText(sliceName, padding * 2, padding * 2);
+          
+          // Draw grid size info
+          tempCtx.fillText(gridSizeInfo, padding * 2, padding * 2 + lineHeight);
+          
+          tempCtx.restore();
           
           const blob = await new Promise<Blob | null>(resolve => tempCanvas.toBlob(resolve, 'image/jpeg', 0.9));
           if (blob) {

@@ -308,9 +308,6 @@ export default function ControlPanel({
                         placeholder="e.g. 28.5"
                         className="h-11 md:h-10 text-base md:text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Use decimals for micro-precision (e.g., 0.5mm for fine-tuning)
-                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Unit</Label>
