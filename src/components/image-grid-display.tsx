@@ -24,6 +24,7 @@ type ImageGridDisplayProps = {
   onCellClick?: (coords: { col: string; row: number } | null) => void;
   gridColor: string;
   labelColor: string;
+  backgroundColor: string;
   gridThickness: number;
   containerRef: React.RefObject<HTMLDivElement>;
   gridIndex: { row: number; col: number };
@@ -41,7 +42,8 @@ type ImageGridDisplayProps = {
   panOffset: { x: number; y: number };
   sliceImageZoom?: number;
   slicePanOffset?: { x: number; y: number };
-  onSliceImageSettingsChange?: (settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+  sliceRotation?: number;
+  onSliceImageSettingsChange?: (settings: { zoom?: number; panOffset?: { x: number; y: number }; rotation?: number }) => void;
   showReferencePoints?: boolean;
   referenceColors?: {
     top: string;
@@ -49,6 +51,8 @@ type ImageGridDisplayProps = {
     bottom: string;
     left: string;
   };
+  imageRotation?: number;
+  isRotationMode?: boolean;
 };
 
 const GridLines = React.memo(({ numCols, numRows, colWidth, rowHeight, strokeColor, strokeWidth }: any) => {
@@ -82,6 +86,7 @@ function ImageGridDisplay({
   onCellClick,
   gridColor,
   labelColor,
+  backgroundColor,
   gridThickness,
   containerRef,
   gridIndex,
@@ -99,6 +104,7 @@ function ImageGridDisplay({
   panOffset,
   sliceImageZoom,
   slicePanOffset,
+  sliceRotation,
   onSliceImageSettingsChange,
   showReferencePoints = false,
   referenceColors = {
@@ -107,6 +113,8 @@ function ImageGridDisplay({
     bottom: '#000000', // Black
     left: '#01b050'    // Green (updated standard)
   },
+  imageRotation = 0,
+  isRotationMode = false,
 }: ImageGridDisplayProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -589,7 +597,13 @@ function ImageGridDisplay({
 
             <div 
               className={`absolute overflow-hidden ${!isReadOnly && isSplit && isAltPressed ? 'cursor-grab' : ''} ${isDragging ? 'cursor-grabbing' : ''}`}
-              style={{ left: labelSize, top: labelSize, width: sliceWidth, height: sliceHeight }}
+              style={{ 
+                left: labelSize, 
+                top: labelSize, 
+                width: sliceWidth, 
+                height: sliceHeight,
+                backgroundColor: backgroundColor // Apply background color only to grid area
+              }}
               onClick={handleGridClick}
               onMouseDown={handleBackgroundMouseDown}
               onMouseMove={handleBackgroundMouseMove}
@@ -603,19 +617,33 @@ function ImageGridDisplay({
                     </div>
                   </div>
                 )}
+                
+                {/* Rotated image container - clipped by parent */}
                 <div
                     className="absolute"
                     style={{
-                        backgroundImage: `url(${imageSrc})`,
-                        backgroundSize: `${imageDimensions.width * effectiveZoom}px ${imageDimensions.height * effectiveZoom}px`,
-                        backgroundPosition: `${backgroundPositionX} ${backgroundPositionY}`,
                         left: 0,
                         top: 0,
                         width: `100%`,
                         height: `100%`,
-                        pointerEvents: isDragging ? 'none' : 'auto',
+                        transform: `rotate(${sliceRotation !== undefined ? sliceRotation : imageRotation}deg)`,
+                        transformOrigin: 'center center'
                     }}
-                />
+                >
+                    <div
+                        className="absolute"
+                        style={{
+                            backgroundImage: `url(${imageSrc})`,
+                            backgroundSize: `${imageDimensions.width * effectiveZoom}px ${imageDimensions.height * effectiveZoom}px`,
+                            backgroundPosition: `${backgroundPositionX} ${backgroundPositionY}`,
+                            left: 0,
+                            top: 0,
+                            width: `100%`,
+                            height: `100%`,
+                            pointerEvents: isDragging || isRotationMode ? 'none' : 'auto'
+                        }}
+                    />
+                </div>
 
                 {/* Drag overlay */}
                 {isDragging && (

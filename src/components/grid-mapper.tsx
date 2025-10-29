@@ -7,6 +7,7 @@ import ControlPanel from './control-panel';
 
 export type GridMapperProps = {
     imageSrc: string | null;
+    imageFile?: File | null;
     imageDimensions: ImageDimensions | null;
     onImageUpload: (file: File) => void;
     onImageLoad: (dimensions: ImageDimensions) => void;
@@ -49,9 +50,10 @@ export type GridMapperProps = {
         [sliceIndex: number]: {
             zoom: number;
             panOffset: { x: number; y: number };
+            rotation?: number;
         }
     };
-    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number }; rotation?: number }) => void;
     onResetSliceSettings?: (sliceIndex: number) => void;
     onResetAllSliceSettings?: () => void;
     showReferencePoints?: boolean;
@@ -67,10 +69,17 @@ export type GridMapperProps = {
         bottom: string;
         left: string;
     }>>;
+    imageRotation?: number;
+    onRotateImage?: (direction: 'left' | 'right') => void;
+    onSetNorthUp?: () => void;
+    isRotationMode?: boolean;
+    onToggleRotationMode?: () => void;
+    onInteractiveRotation?: (angle: number) => void;
 };
 
 export default function GridMapper({
     imageSrc,
+    imageFile,
     imageDimensions,
     onImageUpload,
     onImageLoad,
@@ -116,6 +125,12 @@ export default function GridMapper({
     showReferencePoints,
     referenceColors,
     setReferenceColors,
+    imageRotation,
+    onRotateImage,
+    onSetNorthUp,
+    isRotationMode,
+    onToggleRotationMode,
+    onInteractiveRotation,
 }: GridMapperProps) {
   const [clickedCoords, setClickedCoords] = useState<{
     col: string;
@@ -136,6 +151,9 @@ export default function GridMapper({
       <div className="hidden md:block border-r bg-card/50 backdrop-blur-sm h-full overflow-hidden">
         <ControlPanel
           onImageUpload={onImageUpload}
+          imageSrc={imageSrc}
+          imageFile={imageFile}
+          imageDimensions={imageDimensions}
           cellSize={cellSize}
           setCellSize={setCellSize}
           unit={unit}
@@ -175,6 +193,11 @@ export default function GridMapper({
           onSliceImageSettingsChange={onSliceImageSettingsChange}
           onResetSliceSettings={onResetSliceSettings}
           onResetAllSliceSettings={onResetAllSliceSettings}
+          imageRotation={imageRotation}
+          onRotateImage={onRotateImage}
+          onSetNorthUp={onSetNorthUp}
+          isRotationMode={isRotationMode}
+          onToggleRotationMode={onToggleRotationMode}
         />
       </div>
       {/* Image Workspace - Full width on mobile */}
@@ -215,6 +238,12 @@ export default function GridMapper({
         showReferencePoints={showReferencePoints}
         referenceColors={referenceColors}
         setReferenceColors={setReferenceColors}
+        imageRotation={imageRotation}
+        onRotateImage={onRotateImage}
+        onSetNorthUp={onSetNorthUp}
+        isRotationMode={isRotationMode}
+        onToggleRotationMode={onToggleRotationMode}
+        onInteractiveRotation={onInteractiveRotation}
         />
       </div>
     </div>

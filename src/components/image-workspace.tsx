@@ -6,6 +6,8 @@ import { UploadCloud, ZoomIn, ZoomOut, Maximize2, Palette, RotateCcw } from "luc
 import GridDisplayContainer from './grid-display-container';
 import ImageGridDisplay from './image-grid-display';
 import ScaleBar from './scale-bar';
+import CompassOverlay from './compass-overlay';
+import InteractiveRotationOverlay from './interactive-rotation-overlay';
 import { Slider } from "@/components/ui/slider";
 import { useDragDrop } from '@/hooks/use-drag-drop';
 import { useToast } from '@/hooks/use-toast';
@@ -51,9 +53,10 @@ type ImageWorkspaceProps = {
     [sliceIndex: number]: {
       zoom: number;
       panOffset: { x: number; y: number };
+      rotation?: number;
     }
   };
-  onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+  onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number }; rotation?: number }) => void;
   clickedCoords?: { col: string; row: number } | null;
   onCellClick?: (coords: { col: string; row: number } | null) => void;
   disablePanning?: boolean;
@@ -70,6 +73,12 @@ type ImageWorkspaceProps = {
     bottom: string;
     left: string;
   }>>;
+  imageRotation?: number;
+  onRotateImage?: (direction: 'left' | 'right') => void;
+  onSetNorthUp?: () => void;
+  isRotationMode?: boolean;
+  onToggleRotationMode?: () => void;
+  onInteractiveRotation?: (angle: number) => void;
 };
 
 export default function ImageWorkspace({
@@ -115,6 +124,12 @@ export default function ImageWorkspace({
     left: '#01b050'    // Green (updated standard)
   },
   setReferenceColors,
+  imageRotation = 0,
+  onRotateImage,
+  onSetNorthUp,
+  isRotationMode = false,
+  onToggleRotationMode,
+  onInteractiveRotation,
 }: ImageWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -459,7 +474,7 @@ export default function ImageWorkspace({
     }
   };
   return (
-    <div className="h-full w-full flex flex-col relative" style={{ backgroundColor }}>
+    <div className="h-full w-full flex flex-col relative">
       {/* Main content area - uses full available space with scroll */}
       <div className="flex-1 relative overflow-auto">
         {/* Image workspace - professional full-screen layout */}
@@ -508,6 +523,7 @@ export default function ImageWorkspace({
                       onCellClick={onCellClick}
                       gridColor={gridColor}
                       labelColor={labelColor}
+                      backgroundColor={backgroundColor}
                       gridThickness={gridThickness}
                       containerRef={containerRef}
                       splitCols={splitCols}
@@ -527,6 +543,8 @@ export default function ImageWorkspace({
                       onSliceImageSettingsChange={onSliceImageSettingsChange}
                       showReferencePoints={showReferencePoints}
                       referenceColors={localReferenceColors}
+                      imageRotation={imageRotation}
+                      isRotationMode={isRotationMode}
                   />
                   
                   {/* Reference Points are now handled entirely by ImageGridDisplay */}
@@ -598,6 +616,30 @@ export default function ImageWorkspace({
 
         </div>
       </div>
+      
+      {/* Compass Overlay - Only show if image is loaded and not in rotation mode */}
+      {imageSrc && !isRotationMode && (
+        <CompassOverlay 
+          rotation={selectedSliceIndex !== null && sliceImageSettings?.[selectedSliceIndex]?.rotation !== undefined 
+            ? sliceImageSettings[selectedSliceIndex].rotation 
+            : imageRotation
+          } 
+          onSetNorthUp={onSetNorthUp}
+        />
+      )}
+      
+      {/* Interactive Rotation Overlay - Only show in rotation mode */}
+      {imageSrc && (
+        <InteractiveRotationOverlay
+          isActive={isRotationMode}
+          currentRotation={selectedSliceIndex !== null && sliceImageSettings?.[selectedSliceIndex]?.rotation !== undefined 
+            ? sliceImageSettings[selectedSliceIndex].rotation 
+            : imageRotation
+          }
+          onRotationChange={onInteractiveRotation || (() => {})}
+          containerRef={containerRef}
+        />
+      )}
       
       {/* Scale Bar - Only show if enabled */}
       {imageSrc && showScaleBar && (

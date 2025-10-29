@@ -17,6 +17,7 @@ type GridDisplayContainerProps = {
     hoveredCoords: { col: string; row: number } | null;
     gridColor: string;
     labelColor: string;
+    backgroundColor: string;
     gridThickness: number;
     splitCols: number;
     splitRows: number;
@@ -36,9 +37,10 @@ type GridDisplayContainerProps = {
         [sliceIndex: number]: {
             zoom: number;
             panOffset: { x: number; y: number };
+            rotation?: number;
         }
     };
-    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number } }) => void;
+    onSliceImageSettingsChange?: (sliceIndex: number, settings: { zoom?: number; panOffset?: { x: number; y: number }; rotation?: number }) => void;
     clickedCoords?: { col: string; row: number } | null;
     onCellClick?: (coords: { col: string; row: number } | null) => void;
     showReferencePoints?: boolean;
@@ -48,6 +50,8 @@ type GridDisplayContainerProps = {
         bottom: string;
         left: string;
     };
+    imageRotation?: number;
+    isRotationMode?: boolean;
 };
 
 const GridDisplayContainer = ({
@@ -63,6 +67,7 @@ const GridDisplayContainer = ({
     hoveredCoords,
     gridColor,
     labelColor,
+    backgroundColor,
     gridThickness,
     splitCols,
     splitRows,
@@ -89,6 +94,8 @@ const GridDisplayContainer = ({
         bottom: '#000000', // Black
         left: '#01b050'    // Green (updated standard)
     },
+    imageRotation = 0,
+    isRotationMode = false,
 }: GridDisplayContainerProps) => {
 
     if (!imageSrc || !imageDimensions) {
@@ -125,6 +132,7 @@ const GridDisplayContainer = ({
                     onCellClick={onCellClick}
                     gridColor={gridColor}
                     labelColor={labelColor}
+                    backgroundColor={backgroundColor}
                     gridThickness={gridThickness}
                     containerRef={containerRef}
                     gridIndex={{ row, col }}
@@ -142,13 +150,24 @@ const GridDisplayContainer = ({
                     panOffset={panOffset}
                     sliceImageZoom={sliceSettings?.zoom}
                     slicePanOffset={sliceSettings?.panOffset}
+                    sliceRotation={sliceSettings?.rotation}
                     onSliceImageSettingsChange={onSliceImageSettingsChange ? (settings) => onSliceImageSettingsChange(sliceIndex, settings) : undefined}
                     showReferencePoints={showReferencePoints}
                     referenceColors={referenceColors}
+                    imageRotation={imageRotation}
+                    isRotationMode={isRotationMode}
                 />
             );
         }
     }
+
+    // Calculate dimensions safely
+    const containerWidth = imageDimensions 
+        ? imageDimensions.width + (splitCols * labelSize) + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0)
+        : 'auto';
+    const containerHeight = imageDimensions 
+        ? imageDimensions.height + (splitRows * labelSize) + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0)
+        : 'auto';
 
     return (
         <div 
@@ -159,8 +178,8 @@ const GridDisplayContainer = ({
                 gridTemplateRows: `repeat(${splitRows}, min-content)`,
                 gap: `${sliceSpacing}px`,
                 padding: splitCols * splitRows > 1 ? `${referencePadding + 6}px` : '0', // Dynamic padding based on reference line size
-                width: imageDimensions.naturalWidth + (splitCols * labelSize) + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0), // Dynamic width for reference lines
-                height: imageDimensions.naturalHeight + (splitRows * labelSize) + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? (referencePadding + 6) * 2 : 0), // Dynamic height for reference lines
+                width: typeof containerWidth === 'number' ? `${containerWidth}px` : containerWidth,
+                height: typeof containerHeight === 'number' ? `${containerHeight}px` : containerHeight,
             }}
         >
             {grids}

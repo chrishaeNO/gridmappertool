@@ -27,10 +27,12 @@ type GridMap = {
   splitRows: number;
   showScaleBar: boolean;
   panOffset: { x: number; y: number };
+  imageRotation?: number;
   sliceImageSettings?: {
     [sliceIndex: number]: {
       zoom: number;
       panOffset: { x: number; y: number };
+      rotation?: number;
     }
   };
   shared: boolean;
@@ -122,6 +124,9 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
           imageZoom: typeof data.imageZoom === 'string' 
             ? JSON.parse(data.imageZoom) 
             : data.imageZoom,
+          imageRotation: typeof data.imageRotation === 'string' 
+            ? JSON.parse(data.imageRotation) 
+            : data.imageRotation,
           referenceColors: typeof data.referenceColors === 'string' 
             ? JSON.parse(data.referenceColors) 
             : data.referenceColors,
@@ -273,7 +278,10 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
         <ImageWorkspace
           imageSrc={mapData.imageSrc}
           imageRef={imageRef}
-          imageDimensions={mapData.imageDimensions as ImageDimensions}
+          imageDimensions={mapData.imageDimensions ? {
+            width: (mapData.imageDimensions as any).naturalWidth || (mapData.imageDimensions as any).width,
+            height: (mapData.imageDimensions as any).naturalHeight || (mapData.imageDimensions as any).height
+          } : null}
           onImageLoad={() => {}}
           cellSize={mapData.cellSize}
           unit={mapData.unit as 'px' | 'mm'}
@@ -306,6 +314,7 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
           referenceColors={referenceColors}
           setReferenceColors={setReferenceColors}
           sliceImageSettings={mapData.sliceImageSettings}
+          imageRotation={mapData.imageRotation || 0}
         />
       </main>
       <FloatingInfoButton />

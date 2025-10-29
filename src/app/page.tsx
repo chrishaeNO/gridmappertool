@@ -55,10 +55,13 @@ function HomeContent() {
   const [mapName, setMapName] = useState('My Grid Map');
   const [imageZoom, setImageZoom] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [imageRotation, setImageRotation] = useState(0); // Rotation in degrees (0-359)
+  const [isRotationMode, setIsRotationMode] = useState(false); // Interactive rotation mode
   const [sliceImageSettings, setSliceImageSettings] = useState<{
     [sliceIndex: number]: {
       zoom: number;
       panOffset: { x: number; y: number };
+      rotation?: number;
     }
   }>({});
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
@@ -178,6 +181,7 @@ function HomeContent() {
         setShowCenterCoords(mapData.showCenterCoords || false);
         setShowScaleBar(mapData.showScaleBar || true);
         setImageZoom(mapData.imageZoom || 1);
+        setImageRotation(mapData.imageRotation || 0);
         setPanOffset(parsedPanOffset || { x: 0, y: 0 });
         setIsShared(mapData.shared || false);
         setAccessCode(mapData.accessCode || null);
@@ -482,6 +486,7 @@ function HomeContent() {
         gridOffset,
         panOffset,
         imageZoom,
+        imageRotation,
         showReferencePoints,
         gridColor,
         labelColor, // Use labelColor as expected by Prisma
@@ -585,16 +590,15 @@ function HomeContent() {
     router.push('/');
     
     // Reset all state to create a new map
-    setImageSrc(null);
     setImageFile(null);
+    setImageSrc(null);
     setImageDimensions(null);
-    setCellSize(5.5);
-    setUnit('mm');
-    setDpi(96);
     setGridOffset({ x: 0, y: 0 });
-    setGridColor('#FFFFFF');
-    setLabelColor('#FFFFFF');
-    setBackgroundColor('#0f1729');
+    setCellSize(50);
+    setUnit('px');
+    setDpi(96);
+    setGridColor('#000000');
+    setLabelColor('#000000');
     setGridThickness(1);
     setSplitCols(1);
     setSplitRows(1);
@@ -606,7 +610,9 @@ function HomeContent() {
     setMapName('My Grid Map');
     setImageZoom(1);
     setPanOffset({ x: 0, y: 0 });
-    setCurrentMapId(null);
+    setImageRotation(0);
+    setIsRotationMode(false);
+    setSliceImageSettings({});
     setIsMapSaved(false);
     setIsShared(false);
     setAccessCode(null);
@@ -622,6 +628,87 @@ function HomeContent() {
       title: 'New Map Created',
       description: 'Ready to upload a new image and create your grid map.',
     });
+  };
+
+  const rotateImage = (direction: 'left' | 'right') => {
+    const increment = direction === 'right' ? 90 : -90;
+    
+    if (selectedSliceIndex !== null) {
+      // Rotate specific slice
+      setSliceImageSettings(prev => {
+        const currentRotation = prev[selectedSliceIndex]?.rotation || 0;
+        let newRotation = currentRotation + increment;
+        
+        // Keep rotation between 0-359 degrees
+        if (newRotation >= 360) newRotation -= 360;
+        if (newRotation < 0) newRotation += 360;
+        
+        return {
+          ...prev,
+          [selectedSliceIndex]: {
+            ...prev[selectedSliceIndex],
+            zoom: prev[selectedSliceIndex]?.zoom || 1,
+            panOffset: prev[selectedSliceIndex]?.panOffset || { x: 0, y: 0 },
+            rotation: newRotation
+          }
+        };
+      });
+    } else {
+      // Rotate global image
+      setImageRotation(prev => {
+        let newRotation = prev + increment;
+        
+        // Keep rotation between 0-359 degrees
+        if (newRotation >= 360) newRotation -= 360;
+        if (newRotation < 0) newRotation += 360;
+        
+        return newRotation;
+      });
+    }
+  };
+
+  const setNorthUp = () => {
+    if (selectedSliceIndex !== null) {
+      // Reset specific slice rotation
+      setSliceImageSettings(prev => ({
+        ...prev,
+        [selectedSliceIndex]: {
+          ...prev[selectedSliceIndex],
+          zoom: prev[selectedSliceIndex]?.zoom || 1,
+          panOffset: prev[selectedSliceIndex]?.panOffset || { x: 0, y: 0 },
+          rotation: 0
+        }
+      }));
+    } else {
+      // Reset global rotation
+      setImageRotation(0);
+    }
+  };
+
+  const toggleRotationMode = () => {
+    setIsRotationMode(prev => !prev);
+  };
+
+  const handleInteractiveRotation = (angle: number) => {
+    // Normalize angle to 0-359 degrees
+    let normalizedAngle = angle % 360;
+    if (normalizedAngle < 0) normalizedAngle += 360;
+    
+    if (selectedSliceIndex !== null) {
+      // Rotate specific slice
+      setSliceImageSettings(prev => ({
+        ...prev,
+        [selectedSliceIndex]: {
+          ...prev[selectedSliceIndex],
+          zoom: prev[selectedSliceIndex]?.zoom || 1,
+          panOffset: prev[selectedSliceIndex]?.panOffset || { x: 0, y: 0 },
+          rotation: normalizedAngle
+        }
+      }));
+    } else {
+      // Rotate global image
+      setImageRotation(normalizedAngle);
+    }
   };
 
   const handleToggleShare = async (shared: boolean, accessCode?: string | null) => {
@@ -788,6 +875,7 @@ function HomeContent() {
           const sliceSettings = sliceImageSettings[sliceIndex];
           const effectiveZoom = sliceSettings?.zoom ?? imageZoom;
           const effectivePanOffset = sliceSettings?.panOffset ?? panOffset;
+          const effectiveRotation = sliceSettings?.rotation ?? imageRotation;
           
           const sliceX = col * sliceWidth;
           const sliceY = row * sliceHeight;
@@ -799,7 +887,8 @@ function HomeContent() {
           // For slice-specific settings, we need to draw the image differently
           if (sliceSettings && (sliceSettings.zoom !== imageZoom || 
               sliceSettings.panOffset?.x !== panOffset.x || 
-              sliceSettings.panOffset?.y !== panOffset.y)) {
+              sliceSettings.panOffset?.y !== panOffset.y ||
+              sliceSettings.rotation !== imageRotation)) {
             
             // Set up clipping for this slice area
             tempCtx.save();
@@ -816,6 +905,15 @@ function HomeContent() {
             const backgroundPosX = -((sliceX * effectiveZoom) - effectivePanOffset.x);
             const backgroundPosY = -((sliceY * effectiveZoom) - effectivePanOffset.y);
             
+            // Apply rotation if needed
+            if (effectiveRotation !== 0) {
+              const centerX = imageOffsetX + scaledSliceWidth / 2;
+              const centerY = imageOffsetY + scaledSliceHeight / 2;
+              tempCtx.translate(centerX, centerY);
+              tempCtx.rotate((effectiveRotation * Math.PI) / 180);
+              tempCtx.translate(-centerX, -centerY);
+            }
+            
             // Draw the full scaled image at the calculated position
             tempCtx.drawImage(
                 img,
@@ -827,11 +925,29 @@ function HomeContent() {
             tempCtx.restore();
           } else {
             // Standard slice drawing without custom settings
+            tempCtx.save();
+            
+            // Apply clipping to slice area before rotation
+            tempCtx.beginPath();
+            tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
+            tempCtx.clip();
+            
+            // Apply rotation if needed
+            if (effectiveRotation !== 0) {
+              const centerX = imageOffsetX + scaledSliceWidth / 2;
+              const centerY = imageOffsetY + scaledSliceHeight / 2;
+              tempCtx.translate(centerX, centerY);
+              tempCtx.rotate((effectiveRotation * Math.PI) / 180);
+              tempCtx.translate(-centerX, -centerY);
+            }
+            
             tempCtx.drawImage(
                 img,
                 sliceX, sliceY, sliceWidth, sliceHeight,
                 imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight
             );
+            
+            tempCtx.restore();
           }
           
           const scaledGridOffsetX = gridOffset.x * scale;
@@ -923,7 +1039,8 @@ function HomeContent() {
             for (let i = 0; i < numCellCols; i++) {
                 const xOnSlice = firstColOffset + i * scaledCellSize;
                 
-                if (xOnSlice >= -scaledCellSize && xOnSlice <= actualGridWidth) {
+                // Only show labels for cells that are fully within the grid area
+                if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
                     // Top labels
                     tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
@@ -934,7 +1051,8 @@ function HomeContent() {
             for (let i = 0; i < numCellCols; i++) {
                 const xOnSlice = firstColOffset + i * scaledCellSize;
                 
-                if (xOnSlice >= -scaledCellSize && xOnSlice <= actualGridWidth) {
+                // Only show labels for cells that are fully within the grid area
+                if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
                     // Bottom labels - samme X som topp, men Y i bunn label-området
                     tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
@@ -945,7 +1063,8 @@ function HomeContent() {
             for (let i = 0; i < numCellRows; i++) {
                 const yOnSlice = firstRowOffset + i * scaledCellSize;
                 
-                if (yOnSlice >= -scaledCellSize && yOnSlice <= actualGridHeight) {
+                // Only show labels for cells that are fully within the grid area
+                if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
                     // Left labels
                     tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
@@ -956,7 +1075,8 @@ function HomeContent() {
             for (let i = 0; i < numCellRows; i++) {
                 const yOnSlice = firstRowOffset + i * scaledCellSize;
                 
-                if (yOnSlice >= -scaledCellSize && yOnSlice <= actualGridHeight) {
+                // Only show labels for cells that are fully within the grid area
+                if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
                     // Right labels - samme Y som venstre, men X i høyre label-området
                     tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
@@ -998,10 +1118,20 @@ function HomeContent() {
           // Add slice name and grid info badge
           tempCtx.save();
           
-          // Calculate grid size in mm per cell
-          const gridSizeInfo = unit === 'mm' 
-            ? `${cellSize}mm per cell` 
-            : `${((cellSize / dpi) * 25.4).toFixed(1)}mm per cell`;
+          // Calculate grid size with clear description
+          const cellSizeMm = unit === 'mm' ? cellSize : ((cellSize / dpi) * 25.4);
+          let gridSizeInfo;
+          
+          if (cellSizeMm >= 1000) {
+            // For large cells, show in meters
+            gridSizeInfo = `Grid: ${(cellSizeMm / 1000).toFixed(1)}m squares`;
+          } else if (cellSizeMm >= 10) {
+            // For medium cells, show in cm
+            gridSizeInfo = `Grid: ${(cellSizeMm / 10).toFixed(1)}cm squares`;
+          } else {
+            // For small cells, show in mm
+            gridSizeInfo = `Grid: ${cellSizeMm.toFixed(1)}mm squares`;
+          }
           
           // Very small badge styling for edge placement
           const badgeFontSize = Math.max(8, Math.min(10, scaledSliceWidth * 0.004)) * scale;
@@ -1085,7 +1215,11 @@ function HomeContent() {
     sliceNames,
     showReferencePoints,
     referenceColors,
-    mapName
+    mapName,
+    imageZoom,
+    panOffset,
+    imageRotation,
+    sliceImageSettings
   ]);
 
   const gridMapperProps: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'> = {
@@ -1119,6 +1253,7 @@ function HomeContent() {
       <main className="flex-1 overflow-hidden mobile-bottom-spacing md:pb-0">
         <GridMapper
           imageSrc={imageSrc}
+          imageFile={imageFile}
           imageDimensions={imageDimensions}
           onImageUpload={handleImageUpload}
           onImageLoad={setImageDimensions}
@@ -1126,6 +1261,12 @@ function HomeContent() {
           showReferencePoints={showReferencePoints}
           referenceColors={referenceColors}
           setReferenceColors={setReferenceColors}
+          imageRotation={imageRotation}
+          onRotateImage={rotateImage}
+          onSetNorthUp={setNorthUp}
+          isRotationMode={isRotationMode}
+          onToggleRotationMode={toggleRotationMode}
+          onInteractiveRotation={handleInteractiveRotation}
           {...gridMapperProps}
         />
       </main>
@@ -1152,10 +1293,19 @@ function HomeContent() {
           <div className="flex-1 overflow-hidden">
             <ControlPanel
             onImageUpload={handleImageUpload}
+            imageSrc={imageSrc}
+            imageFile={imageFile}
+            imageDimensions={imageDimensions}
             hasImage={!!imageSrc}
             showReferencePoints={showReferencePoints}
+            onToggleReferencePoints={setShowReferencePoints}
             referenceColors={referenceColors}
             setReferenceColors={setReferenceColors}
+            imageRotation={imageRotation}
+            onRotateImage={rotateImage}
+            onSetNorthUp={setNorthUp}
+            isRotationMode={isRotationMode}
+            onToggleRotationMode={toggleRotationMode}
             {...gridMapperProps}
             setSliceNames={(index: number, newName: string) => {
               const newSliceNames = [...sliceNames];

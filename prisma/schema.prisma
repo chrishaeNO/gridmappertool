@@ -44,6 +44,7 @@ model GridMap {
   showCenterCoords    Boolean  @default(false)
   showScaleBar        Boolean  @default(true)
   imageZoom           Float    @default(1)
+  imageRotation       Float    @default(0)
   panOffset           Json     @default("{\"x\": 0, \"y\": 0}")
   sliceImageSettings  Json     @default("{}")
   shared              Boolean  @default(false)
