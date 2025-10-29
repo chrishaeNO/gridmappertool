@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Info, X, Github, Calendar, User, Code } from 'lucide-react';
+import React, { useState } from 'react';
+import { Info, Github, User, Code, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,49 +10,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-interface GitHubRelease {
-  tag_name: string;
-  name: string;
-  published_at: string;
-  html_url: string;
-}
 
 export default function FloatingInfoButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [version, setVersion] = useState<string>('Loading...');
-  const [releaseDate, setReleaseDate] = useState<string>('');
-  const [releaseUrl, setReleaseUrl] = useState<string>('');
-
-  useEffect(() => {
-    // Fetch latest release info from GitHub API
-    const fetchVersionInfo = async () => {
-      try {
-        const response = await fetch('https://api.github.com/repos/chrishaeNO/gridmappertool/releases/latest');
-        if (response.ok) {
-          const release: GitHubRelease = await response.json();
-          setVersion(release.tag_name || release.name || 'v1.0.0');
-          setReleaseDate(new Date(release.published_at).toLocaleDateString());
-          setReleaseUrl(release.html_url);
-        } else if (response.status === 404) {
-          // No releases found - this is normal for new repositories
-          console.log('No releases found in repository');
-          setVersion('v1.0.0');
-          setReleaseDate(new Date().toLocaleDateString());
-        } else {
-          // Other API errors
-          console.log('GitHub API error:', response.status);
-          setVersion('v1.0.0');
-          setReleaseDate(new Date().toLocaleDateString());
-        }
-      } catch (error) {
-        console.log('Could not fetch version info:', error);
-        setVersion('v1.0.0');
-        setReleaseDate(new Date().toLocaleDateString());
-      }
-    };
-
-    fetchVersionInfo();
-  }, []);
+  const version = 'v1.0.0';
+  const releaseDate = new Date().toLocaleDateString();
 
   return (
     <>
@@ -130,24 +92,12 @@ export default function FloatingInfoButton() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={() => window.open('https://github.com/chrishaeNO/gridmappertool', '_blank')}
               >
                 <Github className="h-4 w-4 mr-2" />
                 GitHub
               </Button>
-              
-              {releaseUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => window.open(releaseUrl, '_blank')}
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Release Notes
-                </Button>
-              )}
             </div>
 
             {/* Copyright */}
