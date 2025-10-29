@@ -244,15 +244,20 @@ function HomeContent() {
   const processImage = async (dataUrl: string) => {
       setImageSrc(dataUrl);
       
-      // Load image to get dimensions
+      // Load image to get dimensions - wait for it to complete
       const img = new Image();
-      img.onload = () => {
-        setImageDimensions({
-          naturalWidth: img.naturalWidth,
-          naturalHeight: img.naturalHeight
-        });
-      };
-      img.src = dataUrl;
+      const dimensions = await new Promise<{naturalWidth: number, naturalHeight: number}>((resolve) => {
+        img.onload = () => {
+          resolve({
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight
+          });
+        };
+        img.src = dataUrl;
+      });
+      
+      setImageDimensions(dimensions);
+      console.log('Image dimensions set:', dimensions);
       
       if (isMobileSheetOpen) {
         setIsMobileSheetOpen(false);
@@ -431,6 +436,7 @@ function HomeContent() {
     }
 
     if (!imageDimensions) {
+      console.log('imageDimensions is null/undefined when trying to save');
       toast({
         variant: 'destructive',
         title: 'Image Loading',
@@ -438,6 +444,8 @@ function HomeContent() {
       });
       return;
     }
+
+    console.log('Saving map with imageDimensions:', imageDimensions);
 
     try {
       // Convert sliceNames array to object format expected by API
@@ -476,6 +484,11 @@ function HomeContent() {
         sliceImageSettings: sliceImageSettings || {},
         shared: isShared,
       };
+
+      console.log('MapData being sent to API:', {
+        ...mapData,
+        imageData: mapData.imageData ? `[${mapData.imageData.length} chars]` : 'null'
+      });
 
       if (currentMapId) {
         // Update existing map
