@@ -449,7 +449,7 @@ function HomeContent() {
     }
 
     // Check map limit for new maps (not when updating existing ones)
-    if (!isMapSaved && !editMapId) {
+    if (!isMapSaved && !currentMapId) {
       try {
         const response = await fetch('/api/grid-maps-simple');
         if (response.ok) {
@@ -572,6 +572,9 @@ function HomeContent() {
 
         const newMap = await response.json();
         setCurrentMapId(newMap.id);
+        
+        // Notify header to refresh map count
+        window.dispatchEvent(new CustomEvent('mapCountChanged'));
         
         toast({
           title: 'Map Saved',

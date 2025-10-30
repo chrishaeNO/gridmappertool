@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
 
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    
+    const maps = await prisma.gridMap.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        shared: true,
+        accessCode: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    return NextResponse.json({ maps });
+  } catch (error) {
+    console.error('Error fetching maps:', error);
+    return NextResponse.json({ error: 'Failed to fetch maps' }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('SIMPLE API - Starting');

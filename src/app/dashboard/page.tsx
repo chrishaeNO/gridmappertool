@@ -231,6 +231,9 @@ function MapList() {
       // Remove from local state
       setMaps(prev => prev.filter(map => map.id !== mapId));
       
+      // Notify header to refresh map count
+      window.dispatchEvent(new CustomEvent('mapCountChanged'));
+      
       toast({
         title: 'Map Deleted',
         description: `"${mapName}" has been successfully deleted.`,

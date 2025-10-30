@@ -63,6 +63,18 @@ function AuthActions() {
         }
     }, [user]);
 
+    // Add a custom event listener to refresh map count when maps change
+    useEffect(() => {
+        const handleMapCountChange = () => {
+            if (user) {
+                fetchMapCount();
+            }
+        };
+
+        window.addEventListener('mapCountChanged', handleMapCountChange);
+        return () => window.removeEventListener('mapCountChanged', handleMapCountChange);
+    }, [user]);
+
     const fetchMapCount = async () => {
         try {
             const response = await fetch('/api/grid-maps-simple');
