@@ -687,8 +687,8 @@ export default function ControlPanel({
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Reference Points Section - Only show on mobile */}
-              <AccordionItem value="reference-points" className="md:hidden">
+              {/* Reference Points Section */}
+              <AccordionItem value="reference-points">
                 <AccordionTrigger className="font-semibold py-2">
                   <div className="flex items-center justify-between w-full mr-2">
                     <div className="flex items-center">

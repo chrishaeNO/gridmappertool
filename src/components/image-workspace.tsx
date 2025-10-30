@@ -475,13 +475,13 @@ export default function ImageWorkspace({
   };
   return (
     <div className="h-full w-full flex flex-col relative">
-      {/* Main content area - uses full available space with scroll */}
-      <div className="flex-1 relative overflow-auto">
-        {/* Image workspace - professional full-screen layout */}
+      {/* Main content area - centered with bottom padding, no scroll */}
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center pb-16">
+        {/* Image workspace - professional centered layout */}
         <div
           ref={containerRef}
-          className={cn("absolute inset-0", 
-            isReadOnly ? "shared-map-container scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent" : "overflow-auto flex items-center justify-center",
+          className={cn("relative max-w-full max-h-full", 
+            isReadOnly ? "shared-map-container scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent overflow-auto" : "flex items-center justify-center",
             disablePanning ? '' : (isPanning ? 'cursor-grabbing' : (isReadOnly ? '' : (imageZoom > 1 ? 'cursor-grab' : ''))),
             // Add drag and drop styling when no image is loaded
             !imageSrc && onImageUpload && isDragOver ? 'bg-primary/5' : ''

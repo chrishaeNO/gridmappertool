@@ -57,6 +57,7 @@ export type GridMapperProps = {
     onResetSliceSettings?: (sliceIndex: number) => void;
     onResetAllSliceSettings?: () => void;
     showReferencePoints?: boolean;
+    onToggleReferencePoints?: (enabled: boolean) => void;
     referenceColors?: {
         top: string;
         right: string;
@@ -123,6 +124,7 @@ export default function GridMapper({
     onResetSliceSettings,
     onResetAllSliceSettings,
     showReferencePoints,
+    onToggleReferencePoints,
     referenceColors,
     setReferenceColors,
     imageRotation,
@@ -185,6 +187,7 @@ export default function GridMapper({
           mapName={mapName}
           setMapName={setMapName}
           showReferencePoints={showReferencePoints}
+          onToggleReferencePoints={onToggleReferencePoints}
           referenceColors={referenceColors}
           setReferenceColors={setReferenceColors}
           sliceImageSettings={sliceImageSettings}
