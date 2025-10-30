@@ -1,4 +1,4 @@
-import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target, ZoomIn, ZoomOut, Maximize2, Palette } from "lucide-react";
+import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target, ZoomIn, ZoomOut, Maximize2, Palette, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -85,6 +85,12 @@ function AuthActions() {
                      <Link href="/dashboard">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Dashboard</span>
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                     <Link href="/profile">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
