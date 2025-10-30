@@ -375,6 +375,7 @@ export default function ControlPanel({
           <Separator className="hidden md:block" />
 
 
+
           {/* Settings */}
           {hasImage && (
             <Accordion type="multiple" value={openSections} onValueChange={setOpenSections} className="w-full">
@@ -687,8 +688,75 @@ export default function ControlPanel({
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Reference Points Section */}
-              <AccordionItem value="reference-points">
+              {/* Reference Points Colors - Desktop only */}
+              <AccordionItem value="reference-colors" className="hidden md:block">
+                <AccordionTrigger className="font-semibold py-2">
+                  <div className="flex items-center justify-between w-full mr-2">
+                    <div className="flex items-center">
+                      <Target className="mr-2 h-4 w-4" />
+                      Reference Line Colors
+                    </div>
+                    {showReferencePoints && (
+                      <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  {showReferencePoints && referenceColors && setReferenceColors ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-top-color-desktop">Top</Label>
+                        <Input
+                          id="ref-top-color-desktop"
+                          type="color"
+                          value={referenceColors.top}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, top: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-right-color-desktop">Right</Label>
+                        <Input
+                          id="ref-right-color-desktop"
+                          type="color"
+                          value={referenceColors.right}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, right: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-bottom-color-desktop">Bottom</Label>
+                        <Input
+                          id="ref-bottom-color-desktop"
+                          type="color"
+                          value={referenceColors.bottom}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, bottom: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ref-left-color-desktop">Left</Label>
+                        <Input
+                          id="ref-left-color-desktop"
+                          type="color"
+                          value={referenceColors.left}
+                          onChange={e => setReferenceColors(prev => ({ ...prev, left: e.target.value }))}
+                          className="p-1 h-10"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Enable reference points in the header to customize colors.
+                    </p>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Reference Points Section - Mobile only */}
+              <AccordionItem value="reference-points" className="md:hidden">
                 <AccordionTrigger className="font-semibold py-2">
                   <div className="flex items-center justify-between w-full mr-2">
                     <div className="flex items-center">
@@ -708,13 +776,13 @@ export default function ControlPanel({
                   {/* Toggle Reference Points */}
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <Label htmlFor="toggle-reference-points">Enable Reference Points</Label>
+                      <Label htmlFor="toggle-reference-points-mobile">Enable Reference Points</Label>
                       <p className="text-xs text-muted-foreground">
                         Show colored reference lines around the grid for orientation.
                       </p>
                     </div>
                     <Switch
-                      id="toggle-reference-points"
+                      id="toggle-reference-points-mobile"
                       checked={showReferencePoints || false}
                       onCheckedChange={onToggleReferencePoints}
                     />
@@ -725,9 +793,9 @@ export default function ControlPanel({
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="ref-top-color">Top</Label>
+                          <Label htmlFor="ref-top-color-mobile">Top</Label>
                           <Input
-                            id="ref-top-color"
+                            id="ref-top-color-mobile"
                             type="color"
                             value={referenceColors.top}
                             onChange={e => setReferenceColors(prev => ({ ...prev, top: e.target.value }))}
@@ -735,9 +803,9 @@ export default function ControlPanel({
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="ref-right-color">Right</Label>
+                          <Label htmlFor="ref-right-color-mobile">Right</Label>
                           <Input
-                            id="ref-right-color"
+                            id="ref-right-color-mobile"
                             type="color"
                             value={referenceColors.right}
                             onChange={e => setReferenceColors(prev => ({ ...prev, right: e.target.value }))}
@@ -745,9 +813,9 @@ export default function ControlPanel({
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="ref-bottom-color">Bottom</Label>
+                          <Label htmlFor="ref-bottom-color-mobile">Bottom</Label>
                           <Input
-                            id="ref-bottom-color"
+                            id="ref-bottom-color-mobile"
                             type="color"
                             value={referenceColors.bottom}
                             onChange={e => setReferenceColors(prev => ({ ...prev, bottom: e.target.value }))}
@@ -755,9 +823,9 @@ export default function ControlPanel({
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="ref-left-color">Left</Label>
+                          <Label htmlFor="ref-left-color-mobile">Left</Label>
                           <Input
-                            id="ref-left-color"
+                            id="ref-left-color-mobile"
                             type="color"
                             value={referenceColors.left}
                             onChange={e => setReferenceColors(prev => ({ ...prev, left: e.target.value }))}

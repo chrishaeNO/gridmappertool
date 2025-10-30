@@ -204,26 +204,43 @@ export default function ImageWorkspace({
     const labelSize = isReadOnly ? 0 : Math.min(25, cellSizePx * 0.4); // No labels on shared maps
     const sliceSpacing = splitCols * splitRows > 1 ? 60 : 0; // Space between slices (increased for better separation)
 
-    const contentWidth = imageDimensions.width + splitCols * labelSize + ((splitCols - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for left/right reference lines + padding for right edge
-    const contentHeight = imageDimensions.height + splitRows * labelSize + ((splitRows - 1) * sliceSpacing) + (splitCols * splitRows > 1 ? 54 : 0); // Extra space for top/bottom reference lines + padding for bottom edge
+    // Calculate reference line space - only add if reference points are enabled
+    const referenceLineSpace = showReferencePoints ? 20 : 0; // Minimal space for reference lines
+    
+    // Calculate total content dimensions including all elements
+    const contentWidth = imageDimensions.width + 
+                        splitCols * labelSize + 
+                        ((splitCols - 1) * sliceSpacing) + 
+                        referenceLineSpace;
+    
+    const contentHeight = imageDimensions.height + 
+                         splitRows * labelSize + 
+                         ((splitRows - 1) * sliceSpacing) + 
+                         referenceLineSpace;
     
     const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
     
-    // Reserve space for bottom controls if they exist, otherwise just padding
-    const hasBottomControls = showScaleBar || (!isReadOnly && showReferencePoints) || !isReadOnly;
-    const availableHeight = containerHeight - (hasBottomControls ? (showScaleBar ? 100 : 80) : 20);
-    const availableWidth = containerWidth - 40;
+    // Use absolute minimal reserved space to maximize map size
+    const compassSpace = 20; // Minimal space for compass overlay
+    const scaleBarSpace = showScaleBar ? 20 : 0; // Minimal space for scale bar overlay
+    const topPadding = 4; // pt-1 = 4px top
+    const bottomPadding = 32; // pb-8 = 32px bottom
     
-    const scaleX = availableWidth / contentWidth;
-    const scaleY = availableHeight / contentHeight;
-    const newScale = Math.min(scaleX, scaleY, 1);
+    const availableHeight = containerHeight - topPadding - bottomPadding;
+    const availableWidth = containerWidth - compassSpace;
+    
+    // Almost no additional padding to use maximum available space
+    const padding = 1;
+    const scaleX = (availableWidth - padding) / contentWidth;
+    const scaleY = (availableHeight - padding) / contentHeight;
+    const newScale = Math.min(scaleX, scaleY, 5); // Allow even more upscaling for maximum size
     
     setScale(newScale);
-  }, [imageDimensions, containerRef, splitCols, splitRows, cellSize, unit, dpi, isReadOnly, showScaleBar]);
+  }, [imageDimensions, containerRef, splitCols, splitRows, cellSize, unit, dpi, isReadOnly, showScaleBar, showReferencePoints]);
   
   useEffect(() => {
       fitAndCenter();
-  }, [imageDimensions, fitAndCenter, splitCols, splitRows]);
+  }, [imageDimensions, fitAndCenter, splitCols, splitRows, showReferencePoints, showScaleBar]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -475,8 +492,8 @@ export default function ImageWorkspace({
   };
   return (
     <div className="h-full w-full flex flex-col relative">
-      {/* Main content area - centered with bottom padding, no scroll */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center pb-16">
+      {/* Main content area - positioned towards top with minimal top padding, normal bottom padding */}
+      <div className="flex-1 relative overflow-hidden flex items-start justify-center pt-1 pb-8">
         {/* Image workspace - professional centered layout */}
         <div
           ref={containerRef}
