@@ -30,7 +30,7 @@ export default function MicrosoftIntegrationModal({
   mapUrl,
   onSaveComplete
 }: MicrosoftIntegrationModalProps) {
-  const { graphService, isAuthenticated, user } = useMicrosoftAuth();
+  const { graphService, isAuthenticated, user, login, loading } = useMicrosoftAuth();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState('onedrive');
@@ -87,6 +87,18 @@ export default function MicrosoftIntegrationModal({
     }
   };
 
+  const handleMicrosoftLogin = async () => {
+    try {
+      await login();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'Failed to connect to Microsoft account',
+      });
+    }
+  };
+
   const handleTeamsShare = (teamId: string, channelId: string, message: string) => {
     setUploadResult(prev => ({ ...prev, teamsShared: true }));
     
@@ -124,12 +136,42 @@ export default function MicrosoftIntegrationModal({
           </DialogHeader>
 
           {!isAuthenticated ? (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Please sign in to your Microsoft account to use OneDrive and Teams integration.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Please sign in to your Microsoft account to use OneDrive and Teams integration.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex flex-col items-center space-y-4 py-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Cloud className="w-8 h-8 text-blue-600" />
+                </div>
+                <p className="text-center text-muted-foreground">
+                  Connect your Microsoft account to save grid maps directly to OneDrive and share with Teams
+                </p>
+                <Button 
+                  onClick={handleMicrosoftLogin} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      Sign in to Microsoft
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* User Info */}
