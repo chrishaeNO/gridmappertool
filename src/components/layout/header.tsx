@@ -132,7 +132,12 @@ function AuthActions() {
                     </div>
                     <Progress 
                         value={loading ? 0 : (mapCount / MAX_MAPS) * 100} 
-                        className="h-2"
+                        className={`h-2 ${
+                          loading ? '' : 
+                          mapCount <= 5 ? '[&>div]:bg-green-500' : // Green when 5 or less
+                          mapCount <= 8 ? '[&>div]:bg-orange-500' : // Orange when 6-8
+                          '[&>div]:bg-red-500' // Red when 9-10
+                        }`}
                     />
                     {mapCount >= MAX_MAPS && (
                         <p className="text-xs text-destructive mt-1">
