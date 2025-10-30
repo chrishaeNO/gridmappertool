@@ -127,7 +127,10 @@ export default function MicrosoftIntegrationModal({
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Cloud className="w-5 h-5 text-blue-600" />
+              <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4z"/>
+                <path d="M24 11.4H12.6V0H24v11.4z" fill="currentColor" opacity="0.8"/>
+              </svg>
               Microsoft Integration
             </DialogTitle>
             <DialogDescription>
@@ -146,7 +149,10 @@ export default function MicrosoftIntegrationModal({
               
               <div className="flex flex-col items-center space-y-4 py-4">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Cloud className="w-8 h-8 text-blue-600" />
+                  <svg className="w-8 h-8 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4z"/>
+                    <path d="M24 11.4H12.6V0H24v11.4z" fill="currentColor" opacity="0.8"/>
+                  </svg>
                 </div>
                 <p className="text-center text-muted-foreground">
                   Connect your Microsoft account to save grid maps directly to OneDrive and share with Teams
@@ -164,7 +170,8 @@ export default function MicrosoftIntegrationModal({
                   ) : (
                     <>
                       <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4z"/>
+                        <path d="M24 11.4H12.6V0H24v11.4z" fill="currentColor" opacity="0.8"/>
                       </svg>
                       Sign in to Microsoft
                     </>

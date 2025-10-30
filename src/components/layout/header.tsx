@@ -322,7 +322,8 @@ export default function Header({ onExport, onShare, onSave, onNewMap, onMicrosof
                 {onMicrosoftIntegration && (
                   <Button onClick={onMicrosoftIntegration} disabled={!hasImage} variant="outline" className="hidden md:inline-flex bg-blue-600 hover:bg-blue-700 text-white border-blue-600" title="Save to OneDrive & Share to Teams">
                     <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.525 9.035c-.35-2.3-2.325-4.035-4.725-4.035-1.325 0-2.5.525-3.375 1.375-.35-.125-.725-.2-1.125-.2-2.2 0-4 1.8-4 4 0 .125.025.25.025.375C2.775 11.05 1.5 12.625 1.5 14.5c0 2.2 1.8 4 4 4h11c1.925 0 3.5-1.575 3.5-3.5 0-1.675-1.2-3.075-2.775-3.465z"/>
+                      <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4z"/>
+                      <path d="M24 11.4H12.6V0H24v11.4z" fill="currentColor" opacity="0.8"/>
                     </svg>
                     Microsoft
                   </Button>
