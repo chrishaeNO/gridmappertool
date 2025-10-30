@@ -33,6 +33,7 @@ type HeaderProps = {
   onShare?: () => void;
   onSave?: () => void;
   onNewMap?: () => void;
+  onMicrosoftIntegration?: () => void;
   hasImage: boolean;
   onImageUpload?: (file: File) => void;
   gridMapperProps?: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'>;
@@ -168,7 +169,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, onMicrosoftIntegration, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -318,6 +319,14 @@ export default function Header({ onExport, onShare, onSave, onNewMap, hasImage, 
                 <Button onClick={onShare} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Share">
                     <Share2 className="h-4 w-4" />
                 </Button>
+                {onMicrosoftIntegration && (
+                  <Button onClick={onMicrosoftIntegration} disabled={!hasImage} variant="outline" className="hidden md:inline-flex bg-blue-600 hover:bg-blue-700 text-white border-blue-600" title="Save to OneDrive & Share to Teams">
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.525 9.035c-.35-2.3-2.325-4.035-4.725-4.035-1.325 0-2.5.525-3.375 1.375-.35-.125-.725-.2-1.125-.2-2.2 0-4 1.8-4 4 0 .125.025.25.025.375C2.775 11.05 1.5 12.625 1.5 14.5c0 2.2 1.8 4 4 4h11c1.925 0 3.5-1.575 3.5-3.5 0-1.675-1.2-3.075-2.775-3.465z"/>
+                    </svg>
+                    Microsoft
+                  </Button>
+                )}
                 <Button onClick={onExport} disabled={!hasImage} className="hidden md:inline-flex">
                     <Download className="mr-2 h-4 w-4" />
                     Export

@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/contexts/auth-context";
+import { MicrosoftAuthProvider } from "@/contexts/microsoft-auth-context";
 
 
 export const metadata: Metadata = {
@@ -32,10 +33,12 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", "dark")}>
         <AuthProvider>
-          <>
-            {children}
-            <Toaster />
-          </>
+          <MicrosoftAuthProvider>
+            <>
+              {children}
+              <Toaster />
+            </>
+          </MicrosoftAuthProvider>
         </AuthProvider>
       </body>
     </html>

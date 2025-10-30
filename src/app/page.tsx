@@ -20,6 +20,7 @@ import LoginModal from '@/components/auth/login-modal';
 import ShareModal from '@/components/share-modal';
 import ExportDialog from '@/components/export-dialog';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
+import MicrosoftIntegrationModal from '@/components/microsoft/microsoft-integration-modal';
 import {
   Sheet,
   SheetContent,
@@ -72,6 +73,7 @@ function HomeContent() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showMicrosoftModal, setShowMicrosoftModal] = useState(false);
   const [showReferencePoints, setShowReferencePoints] = useState(false);
   const [referenceColors, setReferenceColors] = useState({
     top: '#ffffff',    // White
@@ -607,6 +609,24 @@ function HomeContent() {
     } else {
       setShowShareModal(true);
     }
+  };
+
+  const handleMicrosoftIntegration = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!imageSrc) {
+      toast({
+        variant: 'destructive',
+        title: 'No Image',
+        description: 'Please upload an image before saving to OneDrive.',
+      });
+      return;
+    }
+
+    setShowMicrosoftModal(true);
   };
 
   const handleNewMap = () => {
@@ -1265,6 +1285,7 @@ function HomeContent() {
         onShare={handleShare}
         onSave={saveMap}
         onNewMap={handleNewMap}
+        onMicrosoftIntegration={handleMicrosoftIntegration}
         hasImage={!!imageSrc}
         onImageUpload={handleImageUpload}
         gridMapperProps={gridMapperProps}
@@ -1386,6 +1407,30 @@ function HomeContent() {
           onToggleShare={handleToggleShare}
         />
       )}
+
+      {/* Microsoft Integration Modal */}
+      <MicrosoftIntegrationModal
+        open={showMicrosoftModal}
+        onOpenChange={setShowMicrosoftModal}
+        mapName={mapName}
+        mapImageBlob={undefined} // Will be generated when needed
+        mapUrl={currentMapId ? `/map/${currentMapId}` : undefined}
+        onSaveComplete={(result) => {
+          if (result.oneDriveUrl) {
+            toast({
+              title: 'Saved to OneDrive',
+              description: 'Your grid map has been saved successfully.',
+            });
+          }
+          if (result.teamsShared) {
+            toast({
+              title: 'Shared to Teams',
+              description: 'Your grid map is ready to share with your team.',
+            });
+          }
+        }}
+      />
+      
       <FloatingInfoButton />
     </div>
   );
