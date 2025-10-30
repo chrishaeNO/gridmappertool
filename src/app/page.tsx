@@ -1142,8 +1142,10 @@ function HomeContent() {
           // Calculate position - single line format
           const badgePadding = 2 * scale;
           
-          // Combine slice name and grid info on one line
-          const combinedText = `${sliceName} • ${gridSizeInfo}`;
+          // Combine map name, slice name and grid info on one line
+          const combinedText = splitCols * splitRows > 1 
+            ? `${mapName} - ${sliceName} • ${gridSizeInfo}`
+            : `${mapName} • ${gridSizeInfo}`;
           const textWidth = tempCtx.measureText(combinedText).width;
           const badgeWidth = textWidth + badgePadding * 2;
           const badgeHeight = badgeFontSize + badgePadding * 2;
