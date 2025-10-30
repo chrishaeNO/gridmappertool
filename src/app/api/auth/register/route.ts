@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         createdAt: true,
+        updatedAt: true,
       }
     });
 
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
       message: 'User created successfully'
     }, { status: 201 });

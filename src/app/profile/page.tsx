@@ -286,13 +286,21 @@ export default function ProfilePage() {
                   <div>
                     <Label className="text-muted-foreground">Account Created</Label>
                     <p className="font-medium">
-                      {user ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                      {user && user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      }) : 'N/A'}
                     </p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Last Updated</Label>
                     <p className="font-medium">
-                      {user ? new Date(user.updatedAt).toLocaleDateString() : 'N/A'}
+                      {user && user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      }) : 'N/A'}
                     </p>
                   </div>
                 </div>

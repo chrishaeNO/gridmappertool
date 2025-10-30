@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
       message: 'Login successful'
     });
