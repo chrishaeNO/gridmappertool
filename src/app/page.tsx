@@ -1123,14 +1123,20 @@ function HomeContent() {
           let gridSizeInfo;
           
           if (cellSizeMm >= 1000) {
-            // For large cells, show in meters
-            gridSizeInfo = `Grid: ${(cellSizeMm / 1000).toFixed(1)}m squares`;
+            // For large cells, show in meters with clear scale indication
+            const meters = (cellSizeMm / 1000).toFixed(1);
+            gridSizeInfo = `Målestokk: ${meters}m per rute`;
+          } else if (cellSizeMm >= 100) {
+            // For medium-large cells, show in cm
+            const cm = (cellSizeMm / 10).toFixed(0);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
           } else if (cellSizeMm >= 10) {
-            // For medium cells, show in cm
-            gridSizeInfo = `Grid: ${(cellSizeMm / 10).toFixed(1)}cm squares`;
+            // For medium cells, show in cm with decimal
+            const cm = (cellSizeMm / 10).toFixed(1);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
           } else {
             // For small cells, show in mm
-            gridSizeInfo = `Grid: ${cellSizeMm.toFixed(1)}mm squares`;
+            gridSizeInfo = `Målestokk: ${cellSizeMm.toFixed(1)}mm per rute`;
           }
           
           // Very small badge styling for edge placement
@@ -1142,9 +1148,9 @@ function HomeContent() {
           // Calculate position - single line format
           const badgePadding = 2 * scale;
           
-          // Combine map name, slice name and grid info on one line
+          // Combine map name, slice name and grid info on one line with clear formatting
           const combinedText = splitCols * splitRows > 1 
-            ? `${mapName} - ${sliceName} • ${gridSizeInfo}`
+            ? `${mapName} (${sliceName}) • ${gridSizeInfo}`
             : `${mapName} • ${gridSizeInfo}`;
           const textWidth = tempCtx.measureText(combinedText).width;
           const badgeWidth = textWidth + badgePadding * 2;
