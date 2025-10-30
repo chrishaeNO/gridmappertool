@@ -1,4 +1,4 @@
-import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target, ZoomIn, ZoomOut, Maximize2, Palette, User } from "lucide-react";
+import { Grid, Download, PanelLeft, Share2, LogOut, LayoutDashboard, Save, Menu, Plus, Target, ZoomIn, ZoomOut, Maximize2, Palette, User, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import UserAvatar from "@/components/user-avatar";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
@@ -51,6 +52,30 @@ type HeaderProps = {
 
 function AuthActions() {
     const { user, logout } = useAuth();
+    const [mapCount, setMapCount] = useState<number>(0);
+    const [loading, setLoading] = useState(true);
+
+    const MAX_MAPS = 10;
+
+    useEffect(() => {
+        if (user) {
+            fetchMapCount();
+        }
+    }, [user]);
+
+    const fetchMapCount = async () => {
+        try {
+            const response = await fetch('/api/grid-maps-simple');
+            if (response.ok) {
+                const data = await response.json();
+                setMapCount(data.maps?.length || 0);
+            }
+        } catch (error) {
+            console.error('Failed to fetch map count:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSignOut = async () => {
         await logout();
@@ -83,6 +108,28 @@ function AuthActions() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
+                {/* Grid Maps Usage */}
+                <div className="px-2 py-2">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Map className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Grid Maps</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                            {loading ? '...' : `${mapCount}/${MAX_MAPS}`}
+                        </span>
+                    </div>
+                    <Progress 
+                        value={loading ? 0 : (mapCount / MAX_MAPS) * 100} 
+                        className="h-2"
+                    />
+                    {mapCount >= MAX_MAPS && (
+                        <p className="text-xs text-destructive mt-1">
+                            Map limit reached
+                        </p>
+                    )}
+                </div>
+                <DropdownMenuSeparator />
+                
                 <DropdownMenuItem asChild>
                      <Link href="/dashboard">
                         <LayoutDashboard className="mr-2 h-4 w-4" />

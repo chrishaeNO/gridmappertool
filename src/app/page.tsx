@@ -448,6 +448,27 @@ function HomeContent() {
       return;
     }
 
+    // Check map limit for new maps (not when updating existing ones)
+    if (!isMapSaved && !editMapId) {
+      try {
+        const response = await fetch('/api/grid-maps-simple');
+        if (response.ok) {
+          const data = await response.json();
+          const mapCount = data.maps?.length || 0;
+          if (mapCount >= 10) {
+            toast({
+              variant: 'destructive',
+              title: 'Map Limit Reached',
+              description: 'You can only create up to 10 maps. Please delete some maps to create new ones.',
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check map limit:', error);
+      }
+    }
+
     if (!imageDimensions) {
       console.log('imageDimensions is null/undefined when trying to save');
       toast({

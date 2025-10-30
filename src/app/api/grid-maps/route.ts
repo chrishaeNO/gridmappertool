@@ -29,6 +29,18 @@ export async function POST(request: NextRequest) {
     
     console.log('User authenticated:', user.id);
 
+    // Check map limit (10 maps per user)
+    const existingMapsCount = await prisma.gridMap.count({
+      where: { userId: user.id }
+    });
+
+    if (existingMapsCount >= 10) {
+      return NextResponse.json(
+        { error: 'Map limit reached. You can only create up to 10 maps.' },
+        { status: 403 }
+      );
+    }
+
     const mapData = await request.json();
     
     // Validate input data
