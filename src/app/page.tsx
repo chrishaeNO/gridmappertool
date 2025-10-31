@@ -1482,14 +1482,16 @@ function HomeContent() {
         mapName={mapName}
         mapImageBlob={undefined} // Will be generated when needed
         onGenerateImage={async () => {
-          // Generate a single slice image for Google Drive using same logic as export
+          // Generate image using EXACT same logic as export function
           if (!imageSrc || !imageDimensions) {
             throw new Error('No image available to export');
           }
 
           const scale = 2; // High quality export
-          const sliceWidth = imageDimensions.width;
-          const sliceHeight = imageDimensions.height;
+          const width = imageDimensions.width;
+          const height = imageDimensions.height;
+          const sliceWidth = width; // Single slice = full image
+          const sliceHeight = height;
           const scaledSliceWidth = sliceWidth * scale;
           const scaledSliceHeight = sliceHeight * scale;
 
@@ -1497,119 +1499,209 @@ function HomeContent() {
           const tempCtx = tempCanvas.getContext('2d');
           if (!tempCtx) throw new Error('Could not get canvas context');
           
-          // Calculate extra space for labels and reference lines (same as export)
-          const exportLabelSize = 40 * scale;
-          const badgeSpacing = showReferencePoints ? 60 * scale : 40 * scale;
-          const extraWidth = showReferencePoints ? 20 * scale : 0;
-          const extraHeight = showReferencePoints ? 20 * scale : 0;
-          const scaledGridThickness = gridThickness * scale;
+          // EXACT same spacing calculations as export
+          let extraWidth = 0;
+          let extraHeight = 0;
+          let linePadding = 0;
+          let badgeSpacing = 0;
           
+          if (showReferencePoints) {
+            linePadding = 20 * scale;
+            const lineThickness = 8 * scale;
+            extraWidth = (linePadding * 1.5) + lineThickness;
+            extraHeight = (linePadding * 1.5) + lineThickness;
+          } else {
+            badgeSpacing = 16 * scale;
+          }
+          
+          const exportLabelSize = 40 * scale;
+          const scaledGridThickness = gridThickness * scale;
           tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
           tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight + badgeSpacing + scaledGridThickness;
           
           tempCtx.fillStyle = backgroundColor;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           
-          // Draw the image
+          // Load and draw image
           const img = new Image();
+          img.crossOrigin = 'anonymous';
           await new Promise((resolve, reject) => {
             img.onload = resolve;
             img.onerror = reject;
             img.src = imageSrc;
           });
           
-          const imageX = exportLabelSize + (extraWidth / 2);
-          const imageY = exportLabelSize + badgeSpacing + (extraHeight / 2);
-          tempCtx.drawImage(img, imageX, imageY, scaledSliceWidth, scaledSliceHeight);
+          // EXACT same image positioning as export
+          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
+          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing);
           
-          // Draw grid
-          tempCtx.strokeStyle = gridColor;
-          tempCtx.lineWidth = scaledGridThickness;
+          tempCtx.drawImage(img, 0, 0, width, height, imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
           
-          const cols = Math.floor(sliceWidth / cellSize);
-          const rows = Math.floor(sliceHeight / cellSize);
-          const scaledCellSize = cellSize * scale;
+          // EXACT same grid drawing as export
+          const scaledGridOffsetX = gridOffset.x * scale;
+          const scaledGridOffsetY = gridOffset.y * scale;
+          const cellSizePx = unit === 'mm' ? (cellSize * dpi) / 25.4 : cellSize;
+          const scaledCellSize = cellSizePx * scale;
+
+          const gridStartXOnSlice = scaledGridOffsetX;
+          const gridStartYOnSlice = scaledGridOffsetY;
+
+          const firstColOffset = gridStartXOnSlice < 0 ? (Math.ceil(Math.abs(gridStartXOnSlice) / scaledCellSize) * scaledCellSize) + gridStartXOnSlice : gridStartXOnSlice % scaledCellSize;
+          const firstRowOffset = gridStartYOnSlice < 0 ? (Math.ceil(Math.abs(gridStartYOnSlice) / scaledCellSize) * scaledCellSize) + gridStartYOnSlice : gridStartYOnSlice % scaledCellSize;
+
+          const actualGridWidth = scaledSliceWidth;
+          const actualGridHeight = scaledSliceHeight;
           
+          const baseCellCols = Math.floor((actualGridWidth - firstColOffset) / scaledCellSize);
+          const baseCellRows = Math.floor((actualGridHeight - firstRowOffset) / scaledCellSize);
+          
+          const numCellCols = baseCellCols + 1;
+          const numCellRows = baseCellRows + 1;
+          const numColsToDraw = baseCellCols + 1;
+          const numRowsToDraw = baseCellRows + 1;
+          
+          // Draw grid with clipping
+          tempCtx.save();
           tempCtx.beginPath();
-          for (let i = 0; i <= cols; i++) {
-            const x = imageX + (i * scaledCellSize);
-            tempCtx.moveTo(x, imageY);
-            tempCtx.lineTo(x, imageY + scaledSliceHeight);
+          tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
+          tempCtx.clip();
+          tempCtx.translate(imageOffsetX, imageOffsetY);
+
+          tempCtx.strokeStyle = gridColor;
+          tempCtx.lineWidth = gridThickness * scale;
+          
+          // Draw grid lines
+          for (let i = 0; i <= numColsToDraw; i++) {
+            const x = firstColOffset + i * scaledCellSize;
+            if (x >= 0 && x <= actualGridWidth) {
+              tempCtx.beginPath();
+              tempCtx.moveTo(x, 0);
+              tempCtx.lineTo(x, actualGridHeight);
+              tempCtx.stroke();
+            }
           }
-          for (let i = 0; i <= rows; i++) {
-            const y = imageY + (i * scaledCellSize);
-            tempCtx.moveTo(imageX, y);
-            tempCtx.lineTo(imageX + scaledSliceWidth, y);
+          for (let i = 0; i <= numRowsToDraw; i++) {
+            const y = firstRowOffset + i * scaledCellSize;
+            if (y >= 0 && y <= actualGridHeight) {
+              tempCtx.beginPath();
+              tempCtx.moveTo(0, y);
+              tempCtx.lineTo(actualGridWidth, y);
+              tempCtx.stroke();
+            }
           }
+          
+          // Boundary lines
+          tempCtx.beginPath();
+          tempCtx.moveTo(actualGridWidth, 0);
+          tempCtx.lineTo(actualGridWidth, actualGridHeight);
           tempCtx.stroke();
           
-          // Draw coordinate labels (same as export)
-          tempCtx.fillStyle = labelColor;
-          tempCtx.font = `${24 * scale}px Arial`;
-          tempCtx.textAlign = 'center';
-          tempCtx.textBaseline = 'middle';
-          
-          // Top labels (A, B, C...)
-          for (let i = 0; i < cols; i++) {
-            const x = imageX + (i * scaledCellSize) + (scaledCellSize / 2);
-            const y = exportLabelSize / 2;
-            tempCtx.fillText(String.fromCharCode(65 + i), x, y);
+          tempCtx.beginPath();
+          tempCtx.moveTo(0, actualGridHeight);
+          tempCtx.lineTo(actualGridWidth, actualGridHeight);
+          tempCtx.stroke();
+          tempCtx.restore();
+
+          // EXACT same labels as export
+          if (exportLabelSize > 0) {
+            tempCtx.fillStyle = labelColor;
+            const labelFontSize = Math.min(12 * scale, scaledCellSize * 0.3);
+            tempCtx.font = `${labelFontSize}px sans-serif`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+
+            const startColIndex = 0;
+            const startRowIndex = 0;
+
+            // Column labels - Top
+            for (let i = 0; i < numCellCols; i++) {
+              const xOnSlice = firstColOffset + i * scaledCellSize;
+              if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
+                const char = String.fromCharCode(65 + (startColIndex + i) % 26);
+                tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
+              }
+            }
+            
+            // Column labels - Bottom
+            for (let i = 0; i < numCellCols; i++) {
+              const xOnSlice = firstColOffset + i * scaledCellSize;
+              if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
+                const char = String.fromCharCode(65 + (startColIndex + i) % 26);
+                tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
+              }
+            }
+            
+            // Row labels - Left
+            for (let i = 0; i < numCellRows; i++) {
+              const yOnSlice = firstRowOffset + i * scaledCellSize;
+              if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
+                const numLabel = startRowIndex + i + 1;
+                tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+              }
+            }
+            
+            // Row labels - Right
+            for (let i = 0; i < numCellRows; i++) {
+              const yOnSlice = firstRowOffset + i * scaledCellSize;
+              if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
+                const numLabel = startRowIndex + i + 1;
+                tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+              }
+            }
           }
           
-          // Bottom labels (A, B, C...)
-          for (let i = 0; i < cols; i++) {
-            const x = imageX + (i * scaledCellSize) + (scaledCellSize / 2);
-            const y = tempCanvas.height - (exportLabelSize / 2);
-            tempCtx.fillText(String.fromCharCode(65 + i), x, y);
-          }
-          
-          // Left labels (1, 2, 3...)
-          tempCtx.textAlign = 'center';
-          for (let i = 0; i < rows; i++) {
-            const x = exportLabelSize / 2;
-            const y = imageY + (i * scaledCellSize) + (scaledCellSize / 2);
-            tempCtx.fillText((i + 1).toString(), x, y);
-          }
-          
-          // Right labels (1, 2, 3...)
-          for (let i = 0; i < rows; i++) {
-            const x = tempCanvas.width - (exportLabelSize / 2);
-            const y = imageY + (i * scaledCellSize) + (scaledCellSize / 2);
-            tempCtx.fillText((i + 1).toString(), x, y);
-          }
-          
-          // Draw reference lines if enabled
+          // EXACT same reference lines as export
           if (showReferencePoints) {
             const lineThickness = 4 * scale;
             const totalCanvasWidth = tempCanvas.width;
             const totalCanvasHeight = tempCanvas.height;
             
-            // Top line
             tempCtx.fillStyle = referenceColors.top;
             const topLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
             tempCtx.fillRect(topLineX, 0, scaledSliceWidth, lineThickness);
             
-            // Right line
             tempCtx.fillStyle = referenceColors.right;
             const rightLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
             tempCtx.fillRect(totalCanvasWidth - lineThickness, rightLineY, lineThickness, scaledSliceHeight);
             
-            // Bottom line
             tempCtx.fillStyle = referenceColors.bottom;
             const bottomLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
             tempCtx.fillRect(bottomLineX, totalCanvasHeight - lineThickness, scaledSliceWidth, lineThickness);
             
-            // Left line
             tempCtx.fillStyle = referenceColors.left;
             const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
             tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
           }
           
-          // Draw badge (same as export)
+          // EXACT same badge as export
           tempCtx.save();
-          const badgeHeight = 30 * scale;
-          const badgeWidth = Math.min(300 * scale, tempCanvas.width * 0.8);
-          const badgePadding = 8 * scale;
+          
+          const cellSizeMm = unit === 'mm' ? cellSize : ((cellSize / dpi) * 25.4);
+          let gridSizeInfo;
+          
+          if (cellSizeMm >= 1000) {
+            const meters = (cellSizeMm / 1000).toFixed(1);
+            gridSizeInfo = `Målestokk: ${meters}m per rute`;
+          } else if (cellSizeMm >= 100) {
+            const cm = (cellSizeMm / 10).toFixed(0);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
+          } else if (cellSizeMm >= 10) {
+            const cm = (cellSizeMm / 10).toFixed(1);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
+          } else {
+            gridSizeInfo = `Målestokk: ${cellSizeMm.toFixed(1)}mm per rute`;
+          }
+          
+          const badgeFontSize = Math.max(8, Math.min(10, scaledSliceWidth * 0.004)) * scale;
+          tempCtx.font = `${badgeFontSize}px sans-serif`;
+          tempCtx.textAlign = 'center';
+          tempCtx.textBaseline = 'middle';
+          
+          const badgePadding = 2 * scale;
+          const combinedText = `${mapName} • ${gridSizeInfo}`;
+          const textWidth = tempCtx.measureText(combinedText).width;
+          const badgeWidth = textWidth + badgePadding * 2;
+          const badgeHeight = badgeFontSize + badgePadding * 2;
           
           let badgeX, badgeY;
           if (showReferencePoints) {
@@ -1620,18 +1712,16 @@ function HomeContent() {
             badgeY = (badgeSpacing - badgeHeight) / 2;
           }
           
-          // Badge background
-          tempCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-          tempCtx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
+          // White badge background with rounded corners
+          const cornerRadius = 2 * scale;
+          tempCtx.fillStyle = '#FFFFFF';
+          tempCtx.beginPath();
+          tempCtx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, cornerRadius);
+          tempCtx.fill();
           
-          // Badge text
-          tempCtx.fillStyle = 'white';
-          tempCtx.font = `${14 * scale}px Arial`;
-          tempCtx.textAlign = 'center';
-          tempCtx.textBaseline = 'middle';
-          
-          const badgeText = `${mapName} | ${cellSize}${unit} | ${dpi} DPI | GridMapper`;
-          tempCtx.fillText(badgeText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
+          // Black text on white background
+          tempCtx.fillStyle = '#000000';
+          tempCtx.fillText(combinedText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
           
           tempCtx.restore();
           
