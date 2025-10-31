@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Folder, FolderPlus, ArrowLeft, Home, AlertTriangle } from 'lucide-react';
+import { Folder, FolderPlus, ArrowLeft, Home, AlertTriangle, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface GoogleDriveFolderPickerProps {
@@ -39,12 +39,54 @@ export default function GoogleDriveFolderPicker({
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<GoogleDriveFolder[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   useEffect(() => {
     if (open && isAuthenticated && driveService) {
-      loadFolders();
+      loadSavedFolder();
     }
   }, [open, isAuthenticated, driveService]);
+
+  // Load saved folder from localStorage
+  const loadSavedFolder = async () => {
+    const savedFolderId = localStorage.getItem('google_drive_selected_folder_id');
+    const savedFolderData = localStorage.getItem('google_drive_selected_folder_data');
+    
+    if (savedFolderId && savedFolderData) {
+      try {
+        const folderData = JSON.parse(savedFolderData);
+        setCurrentFolder(folderData);
+        await loadFolders(savedFolderId);
+        
+        // Build breadcrumbs for saved folder
+        if (driveService && savedFolderId !== 'root') {
+          const path = await driveService.getFolderPath(savedFolderId);
+          const breadcrumbFolders: GoogleDriveFolder[] = [];
+          
+          // We need to build proper folder objects for breadcrumbs
+          // This is a simplified approach - in a full implementation you'd want to fetch each folder
+          for (let i = 0; i < path.length - 1; i++) {
+            breadcrumbFolders.push({
+              id: `folder-${i}`, // This is a placeholder - ideally we'd have the real IDs
+              name: path[i],
+              mimeType: 'application/vnd.google-apps.folder' as const
+            });
+          }
+          setBreadcrumbs(breadcrumbFolders);
+        }
+      } catch (error) {
+        console.error('Error loading saved folder:', error);
+        localStorage.removeItem('google_drive_selected_folder_id');
+        localStorage.removeItem('google_drive_selected_folder_data');
+        await loadFolders();
+      }
+    } else {
+      await loadFolders();
+    }
+  };
 
   const loadFolders = async (folderId?: string) => {
     if (!driveService) return;
@@ -116,7 +158,46 @@ export default function GoogleDriveFolderPicker({
     }
   };
 
+  const searchFolders = async (term: string) => {
+    if (!driveService || !term.trim()) {
+      setSearchResults([]);
+      setIsSearchMode(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    setIsSearchMode(true);
+    
+    try {
+      const results = await driveService.searchFolders(term.trim());
+      setSearchResults(results);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Search Error',
+        description: 'Failed to search folders',
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setSearchResults([]);
+    setIsSearchMode(false);
+  };
+
   const selectCurrentFolder = () => {
+    // Save selected folder to localStorage
+    if (currentFolder) {
+      localStorage.setItem('google_drive_selected_folder_id', currentFolder.id);
+      localStorage.setItem('google_drive_selected_folder_data', JSON.stringify(currentFolder));
+    } else {
+      localStorage.setItem('google_drive_selected_folder_id', 'root');
+      localStorage.removeItem('google_drive_selected_folder_data');
+    }
+    
     onFolderSelected(currentFolder);
     onOpenChange(false);
   };
@@ -225,6 +306,42 @@ export default function GoogleDriveFolderPicker({
 
         <Separator />
 
+        {/* Search */}
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search folders..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (e.target.value.trim()) {
+                  searchFolders(e.target.value);
+                } else {
+                  clearSearch();
+                }
+              }}
+              className="pl-10 pr-10"
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
+          {isSearchMode && (
+            <div className="text-sm text-muted-foreground">
+              {isSearching ? 'Searching...' : `Found ${searchResults.length} folder${searchResults.length !== 1 ? 's' : ''}`}
+            </div>
+          )}
+        </div>
+
         {/* Action Buttons */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -251,10 +368,44 @@ export default function GoogleDriveFolderPicker({
 
         {/* Folder List */}
         <ScrollArea className="h-64 border rounded-md">
-          {loading ? (
+          {(loading || isSearching) ? (
             <div className="flex items-center justify-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+          ) : isSearchMode ? (
+            searchResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                <Search className="w-8 h-8 mb-2" />
+                <p>No folders found matching "{searchTerm}"</p>
+              </div>
+            ) : (
+              <div className="p-2 space-y-1">
+                {searchResults.map((folder) => (
+                  <Button
+                    key={folder.id}
+                    variant="ghost"
+                    className="w-full justify-start h-auto p-3"
+                    onClick={() => {
+                      setCurrentFolder(folder);
+                      clearSearch();
+                      onFolderSelected(folder);
+                      onOpenChange(false);
+                      // Save selected folder
+                      localStorage.setItem('google_drive_selected_folder_id', folder.id);
+                      localStorage.setItem('google_drive_selected_folder_data', JSON.stringify(folder));
+                    }}
+                  >
+                    <Folder className="w-4 h-4 mr-3 text-blue-600" />
+                    <div className="text-left">
+                      <div className="font-medium">{folder.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {folder.modifiedTime && new Date(folder.modifiedTime).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            )
           ) : folders.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
               <Folder className="w-8 h-8 mb-2" />

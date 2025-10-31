@@ -54,7 +54,7 @@ export default function GoogleDriveIntegrationModal({
     new Array(totalSlices).fill(true)
   );
 
-  // Check auth status when modal opens
+  // Check auth status and load saved folder when modal opens
   useEffect(() => {
     if (open && isAuthenticated) {
       const isValid = checkAuthStatus();
@@ -64,6 +64,17 @@ export default function GoogleDriveIntegrationModal({
           title: 'Authentication Expired',
           description: 'Please sign in to Google again to continue.',
         });
+      } else {
+        // Load saved folder
+        const savedFolderData = localStorage.getItem('google_drive_selected_folder_data');
+        if (savedFolderData) {
+          try {
+            const folderData = JSON.parse(savedFolderData);
+            setSelectedFolder(folderData);
+          } catch (error) {
+            console.error('Error loading saved folder:', error);
+          }
+        }
       }
     }
   }, [open, isAuthenticated, checkAuthStatus, toast]);

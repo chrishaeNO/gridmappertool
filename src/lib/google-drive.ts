@@ -171,6 +171,14 @@ export class GoogleDriveService {
     return response.files || [];
   }
 
+  async searchFolders(searchTerm: string): Promise<GoogleDriveFolder[]> {
+    const query = `mimeType='application/vnd.google-apps.folder' and name contains '${searchTerm}' and trashed=false`;
+    const url = `${this.baseUrl}/files?q=${encodeURIComponent(query)}&fields=files(id,name,parents,createdTime,modifiedTime)&orderBy=name`;
+    
+    const response = await this.makeRequest(url);
+    return response.files || [];
+  }
+
   async getFolderPath(folderId: string): Promise<string[]> {
     const path: string[] = [];
     let currentId = folderId;
