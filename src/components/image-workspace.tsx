@@ -493,7 +493,7 @@ export default function ImageWorkspace({
   return (
     <div className="h-full w-full flex flex-col relative">
       {/* Main content area - positioned towards top with minimal top padding, normal bottom padding */}
-      <div className="flex-1 relative overflow-hidden flex items-start justify-center pt-1 pb-8">
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center pt-1 pb-8">
         {/* Image workspace - professional centered layout */}
         <div
           ref={containerRef}

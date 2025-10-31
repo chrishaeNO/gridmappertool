@@ -200,7 +200,7 @@ export default function SharedMapPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-background text-foreground overflow-hidden touch-manipulation">
+    <div className="flex flex-col h-dvh bg-background text-foreground touch-manipulation">
        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b shrink-0 z-10 bg-card/95 backdrop-blur-md shadow-sm">
         {/* Top row - Title */}
         <div className="flex items-center justify-between h-12 sm:h-16 px-3 sm:px-4 md:px-6 sm:flex-1 sm:min-w-0">
