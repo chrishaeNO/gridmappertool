@@ -394,12 +394,38 @@ function MapList() {
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [backUrl, setBackUrl] = useState('/');
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  // Check for referrer or edit parameter to determine back URL
+  useEffect(() => {
+    // Check if we came from editing a specific map
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromEdit = urlParams.get('from');
+    
+    if (fromEdit) {
+      setBackUrl(`/?edit=${fromEdit}`);
+      // Clean up the URL by removing the 'from' parameter
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('from');
+      window.history.replaceState({}, '', newUrl.toString());
+    } else {
+      // Check document referrer
+      const referrer = document.referrer;
+      if (referrer && referrer.includes(window.location.origin)) {
+        const referrerPath = new URL(referrer).pathname + new URL(referrer).search;
+        // If coming from main app (/) or editing a map, use that as back URL
+        if (referrerPath === '/' || referrerPath.includes('?edit=')) {
+          setBackUrl(referrerPath);
+        }
+      }
+    }
+  }, []);
 
   if (loading || !user) {
     const handleNewMap = () => {
@@ -455,9 +481,9 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <h1 className="text-3xl font-bold tracking-tight">Your Maps</h1>
               <Button asChild variant="outline" className="w-fit">
-                <Link href="/">
+                <Link href={backUrl}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Tilbake til app
+                  Tilbake
                 </Link>
               </Button>
             </div>

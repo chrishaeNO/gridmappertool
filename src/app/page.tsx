@@ -108,9 +108,13 @@ function HomeContent() {
     });
   }, [splitCols, splitRows]);
 
+  // Track current edit ID for header navigation
+  const [currentEditId, setCurrentEditId] = useState<string | null>(null);
+
   // Load existing map for editing
   useEffect(() => {
     const editId = searchParams.get('edit');
+    setCurrentEditId(editId);
     if (!editId || !user) return;
 
     const loadMapForEditing = async () => {
@@ -1345,6 +1349,7 @@ function HomeContent() {
         }}
         referenceColors={referenceColors}
         onReferenceColorsChange={setReferenceColors}
+        currentEditId={currentEditId}
       />
       <main className="flex-1 overflow-hidden mobile-bottom-spacing md:pb-0">
         <GridMapper

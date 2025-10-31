@@ -47,6 +47,7 @@ type HeaderProps = {
   onMobileControlsToggle?: () => void;
   showReferencePoints?: boolean;
   onToggleReferencePoints?: (enabled: boolean) => void;
+  currentEditId?: string | null;
   // Zoom controls
   imageZoom?: number;
   onZoomChange?: (zoom: number) => void;
@@ -56,7 +57,7 @@ type HeaderProps = {
   onReferenceColorsChange?: (colors: { top: string; right: string; bottom: string; left: string }) => void;
 };
 
-function AuthActions() {
+function AuthActions({ currentEditId }: { currentEditId?: string | null }) {
     const { user, logout } = useAuth();
     const [mapCount, setMapCount] = useState<number>(0);
     const [loading, setLoading] = useState(true);
@@ -154,7 +155,7 @@ function AuthActions() {
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuItem asChild>
-                     <Link href="/dashboard">
+                     <Link href={currentEditId ? `/dashboard?from=${currentEditId}` : "/dashboard"}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Dashboard</span>
                     </Link>
@@ -174,7 +175,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, onOneDriveIntegration, onTeamsIntegration, onGoogleDriveIntegration, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, onOneDriveIntegration, onTeamsIntegration, onGoogleDriveIntegration, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, currentEditId, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -348,7 +349,7 @@ export default function Header({ onExport, onShare, onSave, onNewMap, onOneDrive
         
         {/* Desktop: Auth Actions */}
         <div className="hidden md:block">
-          <AuthActions />
+          <AuthActions currentEditId={currentEditId} />
         </div>
       </div>
     </header>
