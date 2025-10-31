@@ -4,7 +4,9 @@ import { hashPassword, generateToken, validateEmail, validatePassword } from '@/
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Register API called');
     const { email, password, name } = await request.json();
+    console.log('Request data received:', { email: email ? 'provided' : 'missing', password: password ? 'provided' : 'missing', name: name ? 'provided' : 'missing' });
 
     // Validation
     if (!email || !password) {

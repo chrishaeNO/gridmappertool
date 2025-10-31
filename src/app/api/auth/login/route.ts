@@ -4,10 +4,13 @@ import { verifyPassword, generateToken, validateEmail } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Login API called');
     const { email, password } = await request.json();
+    console.log('Request data received:', { email: email ? 'provided' : 'missing', password: password ? 'provided' : 'missing' });
 
     // Validation
     if (!email || !password) {
+      console.log('Missing email or password');
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -15,27 +18,43 @@ export async function POST(request: NextRequest) {
     }
 
     if (!validateEmail(email)) {
+      console.log('Invalid email format:', email);
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
       );
     }
 
+    console.log('Looking for user with email:', email.toLowerCase());
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
+    console.log('User found:', user ? 'yes' : 'no');
 
     if (!user) {
+      console.log('User not found');
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
+    // Check if user has a password (not a social login user)
+    if (!user.password) {
+      console.log('User has no password (social login user)');
+      return NextResponse.json(
+        { error: 'This account uses social login. Please sign in with your social provider.' },
+        { status: 401 }
+      );
+    }
+
+    console.log('Verifying password');
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password);
+    console.log('Password valid:', isValidPassword);
     if (!isValidPassword) {
+      console.log('Invalid password');
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
