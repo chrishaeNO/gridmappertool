@@ -21,6 +21,7 @@ import ShareModal from '@/components/share-modal';
 import ExportDialog from '@/components/export-dialog';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
 import MicrosoftIntegrationModal from '@/components/microsoft/microsoft-integration-modal';
+import GoogleDriveIntegrationModal from '@/components/google/google-drive-integration-modal';
 import {
   Sheet,
   SheetContent,
@@ -74,6 +75,7 @@ function HomeContent() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showMicrosoftModal, setShowMicrosoftModal] = useState(false);
+  const [showGoogleDriveModal, setShowGoogleDriveModal] = useState(false);
   const [activeTab, setActiveTab] = useState('onedrive');
   const [showReferencePoints, setShowReferencePoints] = useState(false);
   const [referenceColors, setReferenceColors] = useState({
@@ -648,6 +650,24 @@ function HomeContent() {
 
     setActiveTab('teams');
     setShowMicrosoftModal(true);
+  };
+
+  const handleGoogleDriveIntegration = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!imageSrc) {
+      toast({
+        variant: 'destructive',
+        title: 'No Image',
+        description: 'Please upload an image before saving to Google Drive.',
+      });
+      return;
+    }
+
+    setShowGoogleDriveModal(true);
   };
 
   const handleNewMap = () => {
@@ -1308,6 +1328,7 @@ function HomeContent() {
         onNewMap={handleNewMap}
         onOneDriveIntegration={handleOneDriveIntegration}
         onTeamsIntegration={handleTeamsIntegration}
+        onGoogleDriveIntegration={handleGoogleDriveIntegration}
         hasImage={!!imageSrc}
         onImageUpload={handleImageUpload}
         gridMapperProps={gridMapperProps}
@@ -1449,6 +1470,22 @@ function HomeContent() {
             toast({
               title: 'Shared to Teams',
               description: 'Your grid map is ready to share with your team.',
+            });
+          }
+        }}
+      />
+
+      {/* Google Drive Integration Modal */}
+      <GoogleDriveIntegrationModal
+        open={showGoogleDriveModal}
+        onOpenChange={setShowGoogleDriveModal}
+        mapName={mapName}
+        mapImageBlob={undefined} // Will be generated when needed
+        onSaveComplete={(result) => {
+          if (result.driveUrl) {
+            toast({
+              title: 'Saved to Google Drive',
+              description: 'Your grid map has been saved successfully.',
             });
           }
         }}

@@ -28,6 +28,7 @@ import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import { BiLogoMicrosoftTeams } from "react-icons/bi";
 import { ImOnedrive } from "react-icons/im";
+import { FaGoogleDrive } from "react-icons/fa";
 
 
 type HeaderProps = {
@@ -37,6 +38,7 @@ type HeaderProps = {
   onNewMap?: () => void;
   onOneDriveIntegration?: () => void;
   onTeamsIntegration?: () => void;
+  onGoogleDriveIntegration?: () => void;
   hasImage: boolean;
   onImageUpload?: (file: File) => void;
   gridMapperProps?: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'>;
@@ -172,7 +174,7 @@ function AuthActions() {
     )
 }
 
-export default function Header({ onExport, onShare, onSave, onNewMap, onOneDriveIntegration, onTeamsIntegration, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
+export default function Header({ onExport, onShare, onSave, onNewMap, onOneDriveIntegration, onTeamsIntegration, onGoogleDriveIntegration, hasImage, onImageUpload, gridMapperProps, isMobileSheetOpen, setMobileSheetOpen, onMobileControlsToggle, showReferencePoints, onToggleReferencePoints, imageZoom, onZoomChange, onFitToScreen, referenceColors, onReferenceColorsChange }: HeaderProps) {
   const [isEditingMapName, setIsEditingMapName] = useState(false);
   const mapNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -330,6 +332,11 @@ export default function Header({ onExport, onShare, onSave, onNewMap, onOneDrive
                 {onTeamsIntegration && (
                   <Button onClick={onTeamsIntegration} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Share to Teams">
                     <BiLogoMicrosoftTeams className="h-4 w-4 text-purple-600" />
+                  </Button>
+                )}
+                {onGoogleDriveIntegration && (
+                  <Button onClick={onGoogleDriveIntegration} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Save to Google Drive">
+                    <FaGoogleDrive className="h-4 w-4 text-green-600" />
                   </Button>
                 )}
                 <Button onClick={onExport} disabled={!hasImage} className="hidden md:inline-flex">
