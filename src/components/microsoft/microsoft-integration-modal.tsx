@@ -19,6 +19,7 @@ interface MicrosoftIntegrationModalProps {
   mapName: string;
   mapImageBlob?: Blob;
   mapUrl?: string;
+  initialTab?: 'onedrive' | 'teams';
   onSaveComplete?: (result: { oneDriveUrl?: string; teamsShared?: boolean }) => void;
 }
 
@@ -28,12 +29,13 @@ export default function MicrosoftIntegrationModal({
   mapName,
   mapImageBlob,
   mapUrl,
+  initialTab = 'onedrive',
   onSaveComplete
 }: MicrosoftIntegrationModalProps) {
   const { graphService, isAuthenticated, user, login, loading } = useMicrosoftAuth();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState('onedrive');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedFolder, setSelectedFolder] = useState<OneDriveItem | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [showTeamsDialog, setShowTeamsDialog] = useState(false);
@@ -193,7 +195,7 @@ export default function MicrosoftIntegrationModal({
                 <Badge variant="secondary" className="ml-auto">Connected</Badge>
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'onedrive' | 'teams')}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="onedrive" className="flex items-center gap-2">
                     <Cloud className="w-4 h-4" />

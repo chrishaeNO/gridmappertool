@@ -74,6 +74,7 @@ function HomeContent() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showMicrosoftModal, setShowMicrosoftModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('onedrive');
   const [showReferencePoints, setShowReferencePoints] = useState(false);
   const [referenceColors, setReferenceColors] = useState({
     top: '#ffffff',    // White
@@ -611,7 +612,7 @@ function HomeContent() {
     }
   };
 
-  const handleMicrosoftIntegration = () => {
+  const handleOneDriveIntegration = () => {
     if (!user) {
       setShowLoginModal(true);
       return;
@@ -626,6 +627,26 @@ function HomeContent() {
       return;
     }
 
+    setActiveTab('onedrive');
+    setShowMicrosoftModal(true);
+  };
+
+  const handleTeamsIntegration = () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!imageSrc) {
+      toast({
+        variant: 'destructive',
+        title: 'No Image',
+        description: 'Please upload an image before sharing to Teams.',
+      });
+      return;
+    }
+
+    setActiveTab('teams');
     setShowMicrosoftModal(true);
   };
 
@@ -1285,7 +1306,8 @@ function HomeContent() {
         onShare={handleShare}
         onSave={saveMap}
         onNewMap={handleNewMap}
-        onMicrosoftIntegration={handleMicrosoftIntegration}
+        onOneDriveIntegration={handleOneDriveIntegration}
+        onTeamsIntegration={handleTeamsIntegration}
         hasImage={!!imageSrc}
         onImageUpload={handleImageUpload}
         gridMapperProps={gridMapperProps}
@@ -1415,6 +1437,7 @@ function HomeContent() {
         mapName={mapName}
         mapImageBlob={undefined} // Will be generated when needed
         mapUrl={currentMapId ? `/map/${currentMapId}` : undefined}
+        initialTab={activeTab as 'onedrive' | 'teams'}
         onSaveComplete={(result) => {
           if (result.oneDriveUrl) {
             toast({
