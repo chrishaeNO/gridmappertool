@@ -37,7 +37,7 @@ export default function GoogleDriveIntegrationModal({
   } | null>(null);
 
   const handleSaveToGoogleDrive = async () => {
-    if (!driveService || !mapImageBlob) {
+    if (!driveService) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -49,13 +49,33 @@ export default function GoogleDriveIntegrationModal({
     setUploading(true);
     
     try {
+      // Generate image blob if not provided
+      let imageBlob = mapImageBlob;
+      if (!imageBlob) {
+        // Find the canvas element and convert to blob
+        const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+        if (!canvas) {
+          throw new Error('No canvas found to export');
+        }
+        
+        imageBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to generate image blob'));
+            }
+          }, 'image/png');
+        });
+      }
+      
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `${mapName}_${timestamp}.png`;
       
       const result = await driveService.uploadFile(
         fileName,
-        mapImageBlob,
+        imageBlob,
         selectedFolder?.id
       );
       
@@ -235,7 +255,7 @@ export default function GoogleDriveIntegrationModal({
 
                 <Button
                   onClick={handleSaveToGoogleDrive}
-                  disabled={uploading || !mapImageBlob}
+                  disabled={uploading}
                   className="w-full"
                 >
                   {uploading ? (
