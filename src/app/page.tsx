@@ -1555,8 +1555,9 @@ function HomeContent() {
           const baseCellCols = Math.floor((actualGridWidth - firstColOffset) / scaledCellSize);
           const baseCellRows = Math.floor((actualGridHeight - firstRowOffset) / scaledCellSize);
           
-          const numCellCols = baseCellCols + 1;
-          const numCellRows = baseCellRows + 1;
+          // Include partial cells at the edges to match display
+          const numCellCols = Math.ceil(actualGridWidth / scaledCellSize);
+          const numCellRows = Math.ceil(actualGridHeight / scaledCellSize);
           const numColsToDraw = baseCellCols + 1;
           const numRowsToDraw = baseCellRows + 1;
           
