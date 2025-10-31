@@ -26,6 +26,8 @@ import UserAvatar from "@/components/user-avatar";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
+import { BiLogoMicrosoftTeams } from "react-icons/bi";
+import { ImOnedrive } from "react-icons/im";
 
 
 type HeaderProps = {
@@ -322,18 +324,12 @@ export default function Header({ onExport, onShare, onSave, onNewMap, onOneDrive
                 </Button>
                 {onOneDriveIntegration && (
                   <Button onClick={onOneDriveIntegration} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Save to OneDrive">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.525 9.035c-.35-2.3-2.325-4.035-4.725-4.035-1.325 0-2.5.525-3.375 1.375-.35-.125-.725-.2-1.125-.2-2.2 0-4 1.8-4 4 0 .125.025.25.025.375C2.775 11.05 1.5 12.625 1.5 14.5c0 2.2 1.8 4 4 4h11c1.925 0 3.5-1.575 3.5-3.5 0-1.675-1.2-3.075-2.775-3.465z" fill="#0078d4"/>
-                    </svg>
+                    <ImOnedrive className="h-4 w-4 text-blue-600" />
                   </Button>
                 )}
                 {onTeamsIntegration && (
                   <Button onClick={onTeamsIntegration} disabled={!hasImage} variant="outline" size="icon" className="hidden md:inline-flex" title="Share to Teams">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M20.25 12c0-4.56-3.69-8.25-8.25-8.25S3.75 7.44 3.75 12s3.69 8.25 8.25 8.25 8.25-3.69 8.25-8.25z" fill="#6264a7"/>
-                      <path d="M12 6.75c-2.9 0-5.25 2.35-5.25 5.25s2.35 5.25 5.25 5.25 5.25-2.35 5.25-5.25S14.9 6.75 12 6.75zm0 8.5c-1.8 0-3.25-1.45-3.25-3.25S10.2 8.75 12 8.75s3.25 1.45 3.25 3.25S13.8 15.25 12 15.25z" fill="white"/>
-                      <path d="M16.5 9.75h2.25c.41 0 .75.34.75.75v3c0 .41-.34.75-.75.75H16.5c-.41 0-.75-.34-.75-.75v-3c0-.41.34-.75.75-.75z" fill="#6264a7"/>
-                    </svg>
+                    <BiLogoMicrosoftTeams className="h-4 w-4 text-purple-600" />
                   </Button>
                 )}
                 <Button onClick={onExport} disabled={!hasImage} className="hidden md:inline-flex">

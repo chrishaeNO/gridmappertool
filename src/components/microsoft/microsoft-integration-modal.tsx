@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import OneDriveFolderPicker from './onedrive-folder-picker';
 import TeamsShareDialog from './teams-share-dialog';
 import { Cloud, Users, Download, Share2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { BiLogoMicrosoftTeams } from "react-icons/bi";
+import { ImOnedrive } from "react-icons/im";
 import { useToast } from '@/hooks/use-toast';
 
 interface MicrosoftIntegrationModalProps {
@@ -198,11 +200,11 @@ export default function MicrosoftIntegrationModal({
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'onedrive' | 'teams')}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="onedrive" className="flex items-center gap-2">
-                    <Cloud className="w-4 h-4" />
+                    <ImOnedrive className="w-4 h-4 text-blue-600" />
                     OneDrive
                   </TabsTrigger>
                   <TabsTrigger value="teams" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
+                    <BiLogoMicrosoftTeams className="w-4 h-4 text-purple-600" />
                     Teams
                   </TabsTrigger>
                 </TabsList>
