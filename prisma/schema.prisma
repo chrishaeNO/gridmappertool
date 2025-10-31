@@ -12,15 +12,20 @@ model User {
   id               String    @id @default(cuid())
   email            String    @unique
   name             String?
-  password         String
+  password         String?   // Made optional for social login
   resetToken       String?
   resetTokenExpiry DateTime?
   smsResetCode     String?
   smsResetExpiry   DateTime?
+  // Social login fields
+  provider         String?   // 'local', 'microsoft', 'google'
+  providerId       String?   // External provider user ID
+  avatar           String?   // Profile picture URL
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   gridMaps         GridMap[]
 
+  @@unique([provider, providerId])
   @@map("users")
 }
 
