@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGoogleAuth } from '@/contexts/google-auth-context';
 import { GoogleDriveFolder } from '@/lib/google-drive';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function GoogleDriveIntegrationModal({
   sliceNames = [],
   onGenerateSliceImage
 }: GoogleDriveIntegrationModalProps) {
-  const { driveService, isAuthenticated, user, login, loading } = useGoogleAuth();
+  const { driveService, isAuthenticated, user, login, loading, checkAuthStatus } = useGoogleAuth();
   const { toast } = useToast();
   
   const [selectedFolder, setSelectedFolder] = useState<GoogleDriveFolder | null>(null);
@@ -53,6 +53,20 @@ export default function GoogleDriveIntegrationModal({
   const [selectedSlices, setSelectedSlices] = useState<boolean[]>(() => 
     new Array(totalSlices).fill(true)
   );
+
+  // Check auth status when modal opens
+  useEffect(() => {
+    if (open && isAuthenticated) {
+      const isValid = checkAuthStatus();
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Expired',
+          description: 'Please sign in to Google again to continue.',
+        });
+      }
+    }
+  }, [open, isAuthenticated, checkAuthStatus, toast]);
 
   const handleSaveToGoogleDrive = async () => {
     if (!driveService) {
@@ -142,11 +156,30 @@ export default function GoogleDriveIntegrationModal({
         }
       }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: error.message || 'Failed to save to Google Drive',
-      });
+      console.error('Google Drive upload error:', error);
+      
+      // Check if it's an authentication error
+      if (error.message?.includes('authentication expired') || error.message?.includes('Invalid Credentials')) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Expired',
+          description: 'Please sign in to Google again to continue.',
+          action: (
+            <button 
+              onClick={() => window.location.reload()} 
+              className="text-sm underline"
+            >
+              Refresh Page
+            </button>
+          ),
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: error.message || 'Failed to save to Google Drive',
+        });
+      }
     } finally {
       setUploading(false);
     }

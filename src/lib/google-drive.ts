@@ -37,6 +37,17 @@ export class GoogleDriveService {
 
     if (!response.ok) {
       const error = await response.text();
+      
+      // If it's an authentication error, clear stored tokens
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('google_access_token');
+          localStorage.removeItem('google_user');
+          localStorage.removeItem('google_token_expiry');
+        }
+        throw new Error('Google authentication expired. Please sign in again.');
+      }
+      
       throw new Error(`Google Drive API error: ${response.status} - ${error}`);
     }
 
@@ -126,6 +137,17 @@ export class GoogleDriveService {
 
     if (!response.ok) {
       const error = await response.text();
+      
+      // If it's an authentication error, clear stored tokens
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('google_access_token');
+          localStorage.removeItem('google_user');
+          localStorage.removeItem('google_token_expiry');
+        }
+        throw new Error('Google authentication expired. Please sign in again.');
+      }
+      
       throw new Error(`Google Drive upload error: ${response.status} - ${error}`);
     }
 

@@ -17,6 +17,7 @@ interface GoogleAuthContextType {
   driveService: GoogleDriveService | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  checkAuthStatus: () => boolean;
   loading: boolean;
   error: string | null;
 }
@@ -62,17 +63,30 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
       // Check if user is already signed in
       const savedToken = localStorage.getItem('google_access_token');
       const savedUser = localStorage.getItem('google_user');
+      const tokenExpiry = localStorage.getItem('google_token_expiry');
       
-      if (savedToken && savedUser) {
+      if (savedToken && savedUser && tokenExpiry) {
         try {
-          setAccessToken(savedToken);
-          setUser(JSON.parse(savedUser));
-          setDriveService(new GoogleDriveService(savedToken));
-          setIsAuthenticated(true);
+          const expiryTime = parseInt(tokenExpiry);
+          const now = Date.now();
+          
+          // Check if token is still valid (with 5 minute buffer)
+          if (now < expiryTime - 300000) {
+            setAccessToken(savedToken);
+            setUser(JSON.parse(savedUser));
+            setDriveService(new GoogleDriveService(savedToken));
+            setIsAuthenticated(true);
+          } else {
+            // Token expired, clear storage
+            localStorage.removeItem('google_access_token');
+            localStorage.removeItem('google_user');
+            localStorage.removeItem('google_token_expiry');
+          }
         } catch (error) {
           console.error('Error restoring Google session:', error);
           localStorage.removeItem('google_access_token');
           localStorage.removeItem('google_user');
+          localStorage.removeItem('google_token_expiry');
         }
       }
     } catch (error) {
@@ -147,6 +161,10 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
             setDriveService(new GoogleDriveService(response.access_token));
             localStorage.setItem('google_access_token', response.access_token);
             
+            // Store token expiry (Google tokens typically last 1 hour)
+            const expiryTime = Date.now() + (response.expires_in ? response.expires_in * 1000 : 3600000);
+            localStorage.setItem('google_token_expiry', expiryTime.toString());
+            
             // Get user info
             getUserInfo(response.access_token);
           }
@@ -204,12 +222,38 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
       
       localStorage.removeItem('google_access_token');
       localStorage.removeItem('google_user');
+      localStorage.removeItem('google_token_expiry');
     } catch (error: any) {
       console.error('Google logout error:', error);
       setError(error.message || 'Logout failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkAuthStatus = (): boolean => {
+    const tokenExpiry = localStorage.getItem('google_token_expiry');
+    if (!tokenExpiry || !accessToken) {
+      return false;
+    }
+    
+    const expiryTime = parseInt(tokenExpiry);
+    const now = Date.now();
+    
+    // Check if token is still valid (with 5 minute buffer)
+    if (now >= expiryTime - 300000) {
+      // Token expired, clear everything
+      setUser(null);
+      setAccessToken(null);
+      setDriveService(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('google_access_token');
+      localStorage.removeItem('google_user');
+      localStorage.removeItem('google_token_expiry');
+      return false;
+    }
+    
+    return true;
   };
 
   const value: GoogleAuthContextType = {
@@ -219,6 +263,7 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     driveService,
     login,
     logout,
+    checkAuthStatus,
     loading,
     error,
   };
