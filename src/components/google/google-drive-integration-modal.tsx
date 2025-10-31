@@ -18,6 +18,11 @@ interface GoogleDriveIntegrationModalProps {
   mapImageBlob?: Blob;
   onSaveComplete?: (result: { driveUrl?: string }) => void;
   onGenerateImage?: () => Promise<Blob>;
+  // Map splitting support
+  splitCols?: number;
+  splitRows?: number;
+  sliceNames?: string[];
+  onGenerateSliceImage?: (sliceIndex: number, sliceName: string) => Promise<Blob>;
 }
 
 export default function GoogleDriveIntegrationModal({
@@ -26,7 +31,11 @@ export default function GoogleDriveIntegrationModal({
   mapName,
   mapImageBlob,
   onSaveComplete,
-  onGenerateImage
+  onGenerateImage,
+  splitCols = 1,
+  splitRows = 1,
+  sliceNames = [],
+  onGenerateSliceImage
 }: GoogleDriveIntegrationModalProps) {
   const { driveService, isAuthenticated, user, login, loading } = useGoogleAuth();
   const { toast } = useToast();
@@ -37,6 +46,13 @@ export default function GoogleDriveIntegrationModal({
   const [uploadResult, setUploadResult] = useState<{
     driveUrl?: string;
   } | null>(null);
+  
+  // Map splitting state
+  const totalSlices = splitCols * splitRows;
+  const isMapSplit = totalSlices > 1;
+  const [selectedSlices, setSelectedSlices] = useState<boolean[]>(() => 
+    new Array(totalSlices).fill(true)
+  );
 
   const handleSaveToGoogleDrive = async () => {
     if (!driveService) {
@@ -51,36 +67,79 @@ export default function GoogleDriveIntegrationModal({
     setUploading(true);
     
     try {
-      // Generate image blob if not provided
-      let imageBlob = mapImageBlob;
-      if (!imageBlob) {
-        if (onGenerateImage) {
-          // Use the provided image generation function
-          imageBlob = await onGenerateImage();
-        } else {
-          throw new Error('No image available to save. Please create a grid map first.');
+      if (isMapSplit && onGenerateSliceImage) {
+        // Handle multiple slices
+        const selectedCount = selectedSlices.filter(selected => selected).length;
+        
+        if (selectedCount === 0) {
+          toast({
+            variant: 'destructive',
+            title: 'No Slices Selected',
+            description: 'Please select at least one slice to save.',
+          });
+          setUploading(false);
+          return;
         }
-      }
-      
-      // Generate filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `${mapName}_${timestamp}.png`;
-      
-      const result = await driveService.uploadFile(
-        fileName,
-        imageBlob,
-        selectedFolder?.id
-      );
-      
-      setUploadResult({ driveUrl: result.webViewLink });
-      
-      toast({
-        title: 'Saved to Google Drive',
-        description: `"${fileName}" has been saved successfully.`,
-      });
-      
-      if (onSaveComplete) {
-        onSaveComplete({ driveUrl: result.webViewLink });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const uploadedFiles: string[] = [];
+        
+        for (let i = 0; i < totalSlices; i++) {
+          if (!selectedSlices[i]) continue;
+          
+          const sliceName = sliceNames[i] || `slice-${Math.floor(i / splitCols)}-${i % splitCols}`;
+          const imageBlob = await onGenerateSliceImage(i, sliceName);
+          const fileName = `${mapName}_${sliceName}_${timestamp}.png`;
+          
+          const result = await driveService.uploadFile(
+            fileName,
+            imageBlob,
+            selectedFolder?.id
+          );
+          
+          uploadedFiles.push(fileName);
+        }
+        
+        setUploadResult({ driveUrl: 'multiple' });
+        
+        toast({
+          title: 'Saved to Google Drive',
+          description: `${uploadedFiles.length} slice${uploadedFiles.length > 1 ? 's' : ''} saved successfully.`,
+        });
+        
+        if (onSaveComplete) {
+          onSaveComplete({ driveUrl: 'multiple' });
+        }
+      } else {
+        // Handle single image
+        let imageBlob = mapImageBlob;
+        if (!imageBlob) {
+          if (onGenerateImage) {
+            imageBlob = await onGenerateImage();
+          } else {
+            throw new Error('No image available to save. Please create a grid map first.');
+          }
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `${mapName}_${timestamp}.png`;
+        
+        const result = await driveService.uploadFile(
+          fileName,
+          imageBlob,
+          selectedFolder?.id
+        );
+        
+        setUploadResult({ driveUrl: result.webViewLink });
+        
+        toast({
+          title: 'Saved to Google Drive',
+          description: `"${fileName}" has been saved successfully.`,
+        });
+        
+        if (onSaveComplete) {
+          onSaveComplete({ driveUrl: result.webViewLink });
+        }
       }
     } catch (error: any) {
       toast({
@@ -228,20 +287,80 @@ export default function GoogleDriveIntegrationModal({
                   )}
                 </div>
 
+                {/* Slice Selection for Map Splitting */}
+                {isMapSplit && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Slices to save:</span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedSlices(new Array(totalSlices).fill(true))}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedSlices(new Array(totalSlices).fill(false))}
+                        >
+                          Select None
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid gap-2 max-h-48 overflow-y-auto p-2 border rounded">
+                      {Array.from({ length: totalSlices }, (_, index) => {
+                        const row = Math.floor(index / splitCols);
+                        const col = index % splitCols;
+                        const sliceName = sliceNames[index] || `Slice ${row + 1}-${col + 1}`;
+                        
+                        return (
+                          <label key={index} className="flex items-center space-x-2 cursor-pointer hover:bg-muted/50 p-2 rounded">
+                            <input
+                              type="checkbox"
+                              checked={selectedSlices[index]}
+                              onChange={(e) => {
+                                const newSelected = [...selectedSlices];
+                                newSelected[index] = e.target.checked;
+                                setSelectedSlices(newSelected);
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-sm">{sliceName}</span>
+                            <Badge variant="outline" className="ml-auto text-xs">
+                              {row + 1},{col + 1}
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      {selectedSlices.filter(Boolean).length} of {totalSlices} slices selected
+                    </div>
+                  </div>
+                )}
+
                 {/* Upload Result */}
                 {uploadResult?.driveUrl && (
                   <Alert>
                     <CheckCircle2 className="h-4 w-4" />
                     <AlertDescription>
                       Successfully saved to Google Drive!{' '}
-                      <a 
-                        href={uploadResult.driveUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="underline"
-                      >
-                        View file
-                      </a>
+                      {uploadResult.driveUrl === 'multiple' ? (
+                        'Multiple files have been uploaded.'
+                      ) : (
+                        <a 
+                          href={uploadResult.driveUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          View file
+                        </a>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -254,12 +373,15 @@ export default function GoogleDriveIntegrationModal({
                   {uploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving to Google Drive...
+                      {isMapSplit ? 'Saving slices to Google Drive...' : 'Saving to Google Drive...'}
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4 mr-2" />
-                      Save to Google Drive
+                      {isMapSplit 
+                        ? `Save ${selectedSlices.filter(Boolean).length} slice${selectedSlices.filter(Boolean).length !== 1 ? 's' : ''} to Google Drive`
+                        : 'Save to Google Drive'
+                      }
                     </>
                   )}
                 </Button>
