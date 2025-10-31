@@ -1737,18 +1737,21 @@ function HomeContent() {
           });
         }}
         onGenerateSliceImage={async (sliceIndex: number, sliceName: string) => {
-          // Use EXACT same logic as onGenerateImage but for individual slice
+          // Use EXACT same logic as handleExport for map splitting
           if (!imageSrc || !imageDimensions) {
             throw new Error('No image available to export');
           }
 
-          const scale = 2; // High quality export
-          const width = imageDimensions.width;
-          const height = imageDimensions.height;
-          
-          // Calculate slice dimensions
+          const EXPORT_DPI = 300;
+          const scale = EXPORT_DPI / dpi;
+          const { width, height } = imageDimensions;
+
+          const cellSizePx = unit === 'px' ? cellSize : (cellSize / 25.4) * dpi;
+          const exportLabelSize = Math.min(25, cellSizePx * 0.4) * scale;
+
           const row = Math.floor(sliceIndex / splitCols);
           const col = sliceIndex % splitCols;
+          
           const sliceWidth = width / splitCols;
           const sliceHeight = height / splitRows;
           const scaledSliceWidth = sliceWidth * scale;
@@ -1758,7 +1761,7 @@ function HomeContent() {
           const tempCtx = tempCanvas.getContext('2d');
           if (!tempCtx) throw new Error('Could not get canvas context');
           
-          // EXACT same spacing calculations as onGenerateImage
+          // Calculate extra space needed for reference lines - EXACT same as handleExport
           let extraWidth = 0;
           let extraHeight = 0;
           let linePadding = 0;
@@ -1773,7 +1776,6 @@ function HomeContent() {
             badgeSpacing = 16 * scale;
           }
           
-          const exportLabelSize = 40 * scale;
           const scaledGridThickness = gridThickness * scale;
           tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
           tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight + badgeSpacing + scaledGridThickness;
@@ -1781,7 +1783,6 @@ function HomeContent() {
           tempCtx.fillStyle = backgroundColor;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           
-          // Load and draw image
           const img = new Image();
           img.crossOrigin = 'anonymous';
           await new Promise((resolve, reject) => {
@@ -1790,71 +1791,88 @@ function HomeContent() {
             img.src = imageSrc;
           });
           
-          // EXACT same image positioning as onGenerateImage
+          const sliceX = col * sliceWidth;
+          const sliceY = row * sliceHeight;
+
+          // Offset image position - EXACT same as handleExport
           const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
           const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing);
           
-          // Draw slice of the image
-          const sourceX = col * sliceWidth;
-          const sourceY = row * sliceHeight;
-          tempCtx.drawImage(img, sourceX, sourceY, sliceWidth, sliceHeight, imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
-          
-          // EXACT same grid drawing as onGenerateImage but adjusted for slice
-          const scaledGridOffsetX = gridOffset.x * scale;
-          const scaledGridOffsetY = gridOffset.y * scale;
-          const cellSizePx = unit === 'mm' ? (cellSize * dpi) / 25.4 : cellSize;
-          const scaledCellSize = cellSizePx * scale;
-
-          // Adjust grid start for this slice
-          const gridStartXOnSlice = scaledGridOffsetX - (col * scaledSliceWidth);
-          const gridStartYOnSlice = scaledGridOffsetY - (row * scaledSliceHeight);
-
-          const firstColOffset = gridStartXOnSlice < 0 ? (Math.ceil(Math.abs(gridStartXOnSlice) / scaledCellSize) * scaledCellSize) + gridStartXOnSlice : gridStartXOnSlice % scaledCellSize;
-          const firstRowOffset = gridStartYOnSlice < 0 ? (Math.ceil(Math.abs(gridStartYOnSlice) / scaledCellSize) * scaledCellSize) + gridStartYOnSlice : gridStartYOnSlice % scaledCellSize;
-
-          const actualGridWidth = scaledSliceWidth;
-          const actualGridHeight = scaledSliceHeight;
-          
-          const baseCellCols = Math.floor((actualGridWidth - firstColOffset) / scaledCellSize);
-          const baseCellRows = Math.floor((actualGridHeight - firstRowOffset) / scaledCellSize);
-          
-          // Include partial cells at the edges to match display
-          const numCellCols = Math.ceil(actualGridWidth / scaledCellSize);
-          const numCellRows = Math.ceil(actualGridHeight / scaledCellSize);
-          const numColsToDraw = baseCellCols + 1;
-          const numRowsToDraw = baseCellRows + 1;
-          
-          // Draw grid with clipping
+          // Standard slice drawing - EXACT same as handleExport
           tempCtx.save();
           tempCtx.beginPath();
           tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
           tempCtx.clip();
+          
+          tempCtx.drawImage(
+            img,
+            sliceX, sliceY, sliceWidth, sliceHeight,
+            imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight
+          );
+          
+          tempCtx.restore();
+          
+          const scaledGridOffsetX = gridOffset.x * scale;
+          const scaledGridOffsetY = gridOffset.y * scale;
+          const scaledCellSize = cellSizePx * scale;
+
+          const gridStartXOnSlice = scaledGridOffsetX - (sliceX * scale);
+          const gridStartYOnSlice = scaledGridOffsetY - (sliceY * scale);
+
+          const firstColOffset = gridStartXOnSlice < 0 ? (Math.ceil(Math.abs(gridStartXOnSlice) / scaledCellSize) * scaledCellSize) + gridStartXOnSlice : gridStartXOnSlice % scaledCellSize;
+          const firstRowOffset = gridStartYOnSlice < 0 ? (Math.ceil(Math.abs(gridStartYOnSlice) / scaledCellSize) * scaledCellSize) + gridStartYOnSlice : gridStartYOnSlice % scaledCellSize;
+
+          // Calculate start indices - EXACT same as handleExport
+          const totalColsFromStart = Math.floor((sliceX - gridOffset.x + (firstColOffset / scale)) / cellSizePx);
+          const totalRowsFromStart = Math.floor((sliceY - gridOffset.y + (firstRowOffset / scale)) / cellSizePx);
+
+          const startColIndex = Math.max(0, totalColsFromStart);
+          const startRowIndex = Math.max(0, totalRowsFromStart);
+          
+          const actualGridWidth = scaledSliceWidth;
+          const actualGridHeight = scaledSliceHeight;
+          
+          // EXACT same logic as handleExport
+          const baseCellCols = Math.floor((actualGridWidth - firstColOffset) / scaledCellSize);
+          const baseCellRows = Math.floor((actualGridHeight - firstRowOffset) / scaledCellSize);
+          
+          const numCellCols = baseCellCols + 1;
+          const numCellRows = baseCellRows + 1;
+          
+          const numColsToDraw = baseCellCols + 1;
+          const numRowsToDraw = baseCellRows + 1;
+          
+          tempCtx.save();
+          tempCtx.beginPath();
+          tempCtx.rect(imageOffsetX, imageOffsetY, scaledSliceWidth, scaledSliceHeight);
+          tempCtx.clip();
+          
           tempCtx.translate(imageOffsetX, imageOffsetY);
 
           tempCtx.strokeStyle = gridColor;
           tempCtx.lineWidth = gridThickness * scale;
           
-          // Draw grid lines
+          // Draw grid lines - EXACT same as handleExport
           for (let i = 0; i <= numColsToDraw; i++) {
-            const x = firstColOffset + i * scaledCellSize;
-            if (x >= 0 && x <= actualGridWidth) {
-              tempCtx.beginPath();
-              tempCtx.moveTo(x, 0);
-              tempCtx.lineTo(x, actualGridHeight);
-              tempCtx.stroke();
-            }
+              const x = firstColOffset + i * scaledCellSize;
+              if (x >= 0 && x <= actualGridWidth) {
+                  tempCtx.beginPath();
+                  tempCtx.moveTo(x, 0);
+                  tempCtx.lineTo(x, actualGridHeight);
+                  tempCtx.stroke();
+              }
           }
           for (let i = 0; i <= numRowsToDraw; i++) {
-            const y = firstRowOffset + i * scaledCellSize;
-            if (y >= 0 && y <= actualGridHeight) {
-              tempCtx.beginPath();
-              tempCtx.moveTo(0, y);
-              tempCtx.lineTo(actualGridWidth, y);
-              tempCtx.stroke();
-            }
+              const y = firstRowOffset + i * scaledCellSize;
+               if (y >= 0 && y <= actualGridHeight) {
+                  tempCtx.beginPath();
+                  tempCtx.moveTo(0, y);
+                  tempCtx.lineTo(actualGridWidth, y);
+                  tempCtx.stroke();
+              }
           }
           
-          // Boundary lines
+          // Add boundary lines - EXACT same as handleExport
           tempCtx.beginPath();
           tempCtx.moveTo(actualGridWidth, 0);
           tempCtx.lineTo(actualGridWidth, actualGridHeight);
@@ -1866,84 +1884,105 @@ function HomeContent() {
           tempCtx.stroke();
           tempCtx.restore();
 
-          // EXACT same labels as onGenerateImage but adjusted for slice position
+          // Labels - EXACT same as handleExport
           if (exportLabelSize > 0) {
-            tempCtx.save();
             tempCtx.fillStyle = labelColor;
-            tempCtx.textAlign = 'center';
-            tempCtx.textBaseline = 'middle';
-            
             const labelFontSize = Math.min(12 * scale, scaledCellSize * 0.3);
             tempCtx.font = `${labelFontSize}px sans-serif`;
-            
-            // Column labels (letters) - adjusted for slice position
-            for (let i = 0; i < numCellCols; i++) {
-              const x = imageOffsetX + firstColOffset + i * scaledCellSize + scaledCellSize / 2;
-              if (x >= imageOffsetX && x <= imageOffsetX + actualGridWidth) {
-                // Calculate global column position
-                const globalCol = Math.floor((col * sliceWidth + (firstColOffset + i * scaledCellSize) / scale - gridOffset.x) / (scaledCellSize / scale));
-                const letter = String.fromCharCode(65 + (globalCol % 26));
-                
-                // Top label
-                tempCtx.fillText(letter, x, exportLabelSize / 2);
-                // Bottom label
-                tempCtx.fillText(letter, x, tempCanvas.height - exportLabelSize / 2);
-              }
-            }
-            
-            // Row labels (numbers) - adjusted for slice position
-            for (let i = 0; i < numCellRows; i++) {
-              const y = imageOffsetY + firstRowOffset + i * scaledCellSize + scaledCellSize / 2;
-              if (y >= imageOffsetY && y <= imageOffsetY + actualGridHeight) {
-                // Calculate global row position
-                const globalRow = Math.floor((row * sliceHeight + (firstRowOffset + i * scaledCellSize) / scale - gridOffset.y) / (scaledCellSize / scale));
-                const number = (globalRow + 1).toString();
-                
-                // Left label
-                tempCtx.fillText(number, exportLabelSize / 2, y);
-                // Right label
-                tempCtx.fillText(number, tempCanvas.width - exportLabelSize / 2, y);
-              }
-            }
-            tempCtx.restore();
-          }
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
 
-          // EXACT same reference lines as onGenerateImage
-          if (showReferencePoints) {
-            const lineThickness = 4 * scale; // Halvparten av skjerm-tykkelsen
-            const sliceContentWidth = scaledSliceWidth + (2 * exportLabelSize);
-            const sliceContentHeight = scaledSliceHeight + (2 * exportLabelSize);
+            // Column labels - Top - EXACT same as handleExport
+            for (let i = 0; i < numCellCols; i++) {
+                const xOnSlice = firstColOffset + i * scaledCellSize;
+                
+                if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
+                    const char = String.fromCharCode(65 + ((startColIndex + i) % 26));
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
+                }
+            }
             
+            // Column labels - Bottom - EXACT same as handleExport
+            for (let i = 0; i < numCellCols; i++) {
+                const xOnSlice = firstColOffset + i * scaledCellSize;
+                
+                if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
+                    const char = String.fromCharCode(65 + ((startColIndex + i) % 26));
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
+                }
+            }
+            
+            // Row labels - Left - EXACT same as handleExport
+            for (let i = 0; i < numCellRows; i++) {
+                const yOnSlice = firstRowOffset + i * scaledCellSize;
+                
+                if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
+                    const numLabel = startRowIndex + i + 1;
+                    tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                }
+            }
+            
+            // Row labels - Right - EXACT same as handleExport
+            for (let i = 0; i < numCellRows; i++) {
+                const yOnSlice = firstRowOffset + i * scaledCellSize;
+                
+                if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
+                    const numLabel = startRowIndex + i + 1;
+                    tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                }
+            }
+          }
+          
+          // Reference lines - EXACT same as handleExport
+          if (showReferencePoints) {
+            const lineThickness = 4 * scale;
             const totalCanvasWidth = tempCanvas.width;
             const totalCanvasHeight = tempCanvas.height;
             
             // Top line
             tempCtx.fillStyle = referenceColors.top;
-            tempCtx.fillRect(linePadding, linePadding, sliceContentWidth, lineThickness);
+            const topLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
+            tempCtx.fillRect(topLineX, 0, scaledSliceWidth, lineThickness);
             
             // Right line
             tempCtx.fillStyle = referenceColors.right;
-            tempCtx.fillRect(totalCanvasWidth - linePadding - lineThickness, linePadding + lineThickness, lineThickness, sliceContentHeight);
+            const rightLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
+            tempCtx.fillRect(totalCanvasWidth - lineThickness, rightLineY, lineThickness, scaledSliceHeight);
             
             // Bottom line
             tempCtx.fillStyle = referenceColors.bottom;
-            tempCtx.fillRect(linePadding, totalCanvasHeight - linePadding - lineThickness, sliceContentWidth, lineThickness);
+            const bottomLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
+            tempCtx.fillRect(bottomLineX, totalCanvasHeight - lineThickness, scaledSliceWidth, lineThickness);
             
             // Left line
             tempCtx.fillStyle = referenceColors.left;
-            tempCtx.fillRect(linePadding, linePadding + lineThickness, lineThickness, sliceContentHeight);
+            const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
+            tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
           }
-
-          // EXACT same badge as onGenerateImage
+          
+          // Badge - EXACT same as handleExport
           tempCtx.save();
-          tempCtx.fillStyle = labelColor;
+          
+          const cellSizeMm = unit === 'mm' ? cellSize : ((cellSize / dpi) * 25.4);
+          let gridSizeInfo;
+          
+          if (cellSizeMm >= 1000) {
+            const meters = (cellSizeMm / 1000).toFixed(1);
+            gridSizeInfo = `Målestokk: ${meters}m per rute`;
+          } else if (cellSizeMm >= 100) {
+            const cm = (cellSizeMm / 10).toFixed(0);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
+          } else if (cellSizeMm >= 10) {
+            const cm = (cellSizeMm / 10).toFixed(1);
+            gridSizeInfo = `Målestokk: ${cm}cm per rute`;
+          } else {
+            gridSizeInfo = `Målestokk: ${cellSizeMm.toFixed(1)}mm per rute`;
+          }
+          
+          const badgeFontSize = Math.max(8, Math.min(10, scaledSliceWidth * 0.004)) * scale;
+          tempCtx.font = `${badgeFontSize}px sans-serif`;
           tempCtx.textAlign = 'center';
           tempCtx.textBaseline = 'middle';
-          
-          const badgeFontSize = Math.max(8 * scale, Math.min(16 * scale, tempCanvas.width * 0.02));
-          tempCtx.font = `${badgeFontSize}px sans-serif`;
-          
-          const gridSizeInfo = `Målestokk: ${cellSize}${unit} per rute`;
           
           const badgePadding = 2 * scale;
           const combinedText = `${mapName} (${sliceName}) • ${gridSizeInfo}`;
@@ -1952,6 +1991,7 @@ function HomeContent() {
           const badgeHeight = badgeFontSize + badgePadding * 2;
           
           let badgeX, badgeY;
+          
           if (showReferencePoints) {
             badgeX = (tempCanvas.width - badgeWidth) / 2;
             badgeY = badgePadding;
@@ -1960,14 +2000,12 @@ function HomeContent() {
             badgeY = (badgeSpacing - badgeHeight) / 2;
           }
           
-          // White badge background with rounded corners
           const cornerRadius = 2 * scale;
           tempCtx.fillStyle = '#FFFFFF';
           tempCtx.beginPath();
           tempCtx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, cornerRadius);
           tempCtx.fill();
           
-          // Black text on white background
           tempCtx.fillStyle = '#000000';
           tempCtx.fillText(combinedText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
           
