@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, PlusCircle, Edit, Trash2, Share2, Eye } from 'lucide-react';
+import { ExternalLink, PlusCircle, Edit, Trash2, Share2, Eye, ArrowLeft } from 'lucide-react';
 import FloatingInfoButton from '@/components/floating-info-button';
 import Header from '@/components/layout/header';
 import ShareModal from '@/components/share-modal';
@@ -410,7 +410,10 @@ export default function DashboardPage() {
        <div className="flex flex-col h-dvh bg-background text-foreground">
          <Header hasImage={false} onNewMap={handleNewMap} />
          <main className="flex-1 container mx-auto p-4 md:p-8">
-            <Skeleton className="h-10 w-1/4 mb-8" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <Skeleton className="h-10 w-1/4" />
+              <Skeleton className="h-10 w-32" />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
                 <Card key={i}>
@@ -449,7 +452,15 @@ export default function DashboardPage() {
     <div className="flex flex-col h-dvh bg-background text-foreground">
        <Header hasImage={false} onNewMap={handleNewMap} />
        <main className="flex-1 container mx-auto p-4 md:p-8 mobile-bottom-spacing md:pb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-8">Your Maps</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <h1 className="text-3xl font-bold tracking-tight">Your Maps</h1>
+              <Button asChild variant="outline" className="w-fit">
+                <Link href="/">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Tilbake til app
+                </Link>
+              </Button>
+            </div>
             <MapList />
        </main>
        
