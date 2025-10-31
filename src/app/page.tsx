@@ -1481,6 +1481,75 @@ function HomeContent() {
         onOpenChange={setShowGoogleDriveModal}
         mapName={mapName}
         mapImageBlob={undefined} // Will be generated when needed
+        onGenerateImage={async () => {
+          // Generate a single slice image for Google Drive
+          if (!imageSrc || !imageDimensions) {
+            throw new Error('No image available to export');
+          }
+
+          const scale = 2; // High quality export
+          const sliceWidth = imageDimensions.width;
+          const sliceHeight = imageDimensions.height;
+          const scaledSliceWidth = sliceWidth * scale;
+          const scaledSliceHeight = sliceHeight * scale;
+
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d');
+          if (!tempCtx) throw new Error('Could not get canvas context');
+          
+          // Calculate extra space for labels and reference lines
+          const exportLabelSize = 40 * scale;
+          const badgeSpacing = showReferencePoints ? 60 * scale : 40 * scale;
+          const extraWidth = showReferencePoints ? 20 * scale : 0;
+          const extraHeight = showReferencePoints ? 20 * scale : 0;
+          const scaledGridThickness = gridThickness * scale;
+          
+          tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
+          tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight + badgeSpacing + scaledGridThickness;
+          
+          tempCtx.fillStyle = backgroundColor;
+          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Draw the image
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = imageSrc;
+          });
+          
+          const imageX = exportLabelSize + (extraWidth / 2);
+          const imageY = exportLabelSize + badgeSpacing + (extraHeight / 2);
+          tempCtx.drawImage(img, imageX, imageY, scaledSliceWidth, scaledSliceHeight);
+          
+          // Draw grid (simplified version)
+          tempCtx.strokeStyle = gridColor;
+          tempCtx.lineWidth = scaledGridThickness;
+          
+          const cols = Math.floor(sliceWidth / cellSize);
+          const rows = Math.floor(sliceHeight / cellSize);
+          const scaledCellSize = cellSize * scale;
+          
+          tempCtx.beginPath();
+          for (let i = 0; i <= cols; i++) {
+            const x = imageX + (i * scaledCellSize);
+            tempCtx.moveTo(x, imageY);
+            tempCtx.lineTo(x, imageY + scaledSliceHeight);
+          }
+          for (let i = 0; i <= rows; i++) {
+            const y = imageY + (i * scaledCellSize);
+            tempCtx.moveTo(imageX, y);
+            tempCtx.lineTo(imageX + scaledSliceWidth, y);
+          }
+          tempCtx.stroke();
+          
+          return new Promise<Blob>((resolve, reject) => {
+            tempCanvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Failed to generate image'));
+            }, 'image/png', 0.9);
+          });
+        }}
         onSaveComplete={(result) => {
           if (result.driveUrl) {
             toast({

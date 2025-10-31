@@ -17,6 +17,7 @@ interface GoogleDriveIntegrationModalProps {
   mapName: string;
   mapImageBlob?: Blob;
   onSaveComplete?: (result: { driveUrl?: string }) => void;
+  onGenerateImage?: () => Promise<Blob>;
 }
 
 export default function GoogleDriveIntegrationModal({
@@ -24,7 +25,8 @@ export default function GoogleDriveIntegrationModal({
   onOpenChange,
   mapName,
   mapImageBlob,
-  onSaveComplete
+  onSaveComplete,
+  onGenerateImage
 }: GoogleDriveIntegrationModalProps) {
   const { driveService, isAuthenticated, user, login, loading } = useGoogleAuth();
   const { toast } = useToast();
@@ -52,21 +54,12 @@ export default function GoogleDriveIntegrationModal({
       // Generate image blob if not provided
       let imageBlob = mapImageBlob;
       if (!imageBlob) {
-        // Find the canvas element and convert to blob
-        const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-        if (!canvas) {
-          throw new Error('No canvas found to export');
+        if (onGenerateImage) {
+          // Use the provided image generation function
+          imageBlob = await onGenerateImage();
+        } else {
+          throw new Error('No image available to save. Please create a grid map first.');
         }
-        
-        imageBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to generate image blob'));
-            }
-          }, 'image/png');
-        });
       }
       
       // Generate filename with timestamp
