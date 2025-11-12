@@ -56,3 +56,12 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 /src/generated/prisma
+
+# Temporary files
+.modified
+*.tmp
+*.temp
+
+# Deployment configs for other platforms
+netlify.toml
+surge.json
