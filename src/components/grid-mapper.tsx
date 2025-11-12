@@ -76,6 +76,19 @@ export type GridMapperProps = {
     isRotationMode?: boolean;
     onToggleRotationMode?: () => void;
     onInteractiveRotation?: (angle: number) => void;
+    // Compass letters props
+    compassLetters?: {
+        north: boolean;
+        south: boolean;
+        east: boolean;
+        west: boolean;
+    };
+    onCompassLettersChange?: (letters: {
+        north: boolean;
+        south: boolean;
+        east: boolean;
+        west: boolean;
+    }) => void;
 };
 
 export default function GridMapper({
@@ -133,6 +146,8 @@ export default function GridMapper({
     isRotationMode,
     onToggleRotationMode,
     onInteractiveRotation,
+    compassLetters,
+    onCompassLettersChange,
 }: GridMapperProps) {
   const [clickedCoords, setClickedCoords] = useState<{
     col: string;
@@ -190,6 +205,8 @@ export default function GridMapper({
           onToggleReferencePoints={onToggleReferencePoints}
           referenceColors={referenceColors}
           setReferenceColors={setReferenceColors}
+          compassLetters={compassLetters}
+          onCompassLettersChange={onCompassLettersChange}
           sliceImageSettings={sliceImageSettings}
           globalImageZoom={imageZoom}
           globalPanOffset={panOffset}
@@ -247,6 +264,8 @@ export default function GridMapper({
         isRotationMode={isRotationMode}
         onToggleRotationMode={onToggleRotationMode}
         onInteractiveRotation={onInteractiveRotation}
+        compassLetters={compassLetters}
+        onCompassLettersChange={onCompassLettersChange}
         />
       </div>
     </div>

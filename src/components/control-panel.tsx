@@ -24,7 +24,7 @@ import {Label} from '@/components/ui/label';
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group';
 import {Separator} from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {UploadCloud, Palette, Grid, Eye, AlertTriangle, CheckCircle2, FileText, Map, Loader2, RotateCcw, RotateCw, Compass, Target} from 'lucide-react';
+import {UploadCloud, Palette, Grid, Eye, AlertTriangle, CheckCircle2, FileText, Map, Loader2, RotateCcw, RotateCw, Compass, Target, Navigation } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import type {Dispatch, SetStateAction} from 'react';
 import { cn } from "@/lib/utils";
@@ -79,6 +79,18 @@ type ControlPanelProps = {
     bottom: string;
     left: string;
   }>>;
+  compassLetters?: {
+    north: boolean;
+    south: boolean;
+    east: boolean;
+    west: boolean;
+  };
+  onCompassLettersChange?: (letters: {
+    north: boolean;
+    south: boolean;
+    east: boolean;
+    west: boolean;
+  }) => void;
   sliceImageSettings?: {
     [sliceIndex: number]: {
       zoom: number;
@@ -137,6 +149,8 @@ export default function ControlPanel({
   onToggleReferencePoints,
   referenceColors,
   setReferenceColors,
+  compassLetters = { north: false, south: false, east: false, west: false },
+  onCompassLettersChange,
   sliceImageSettings,
   globalImageZoom = 1,
   globalPanOffset = { x: 0, y: 0 },
@@ -833,6 +847,102 @@ export default function ControlPanel({
                           />
                         </div>
                       </div>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Compass Letters Section */}
+              <AccordionItem value="compass-letters">
+                <AccordionTrigger className="font-semibold py-2">
+                  <div className="flex items-center justify-between w-full mr-2">
+                    <div className="flex items-center">
+                      <Navigation className="mr-2 h-4 w-4" />
+                      Compass Letters (N, S, E, W)
+                    </div>
+                    {(compassLetters.north || compassLetters.south || compassLetters.east || compassLetters.west) && (
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Enable compass direction letters that appear outside reference lines when enabled. Letters will be included in exports and map splitting.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="compass-north">North (N)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show "N" at the top
+                        </p>
+                      </div>
+                      <Switch
+                        id="compass-north"
+                        checked={compassLetters.north}
+                        onCheckedChange={(checked) => 
+                          onCompassLettersChange?.({ ...compassLetters, north: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="compass-south">South (S)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show "S" at the bottom
+                        </p>
+                      </div>
+                      <Switch
+                        id="compass-south"
+                        checked={compassLetters.south}
+                        onCheckedChange={(checked) => 
+                          onCompassLettersChange?.({ ...compassLetters, south: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="compass-east">East (E)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show "E" at the right
+                        </p>
+                      </div>
+                      <Switch
+                        id="compass-east"
+                        checked={compassLetters.east}
+                        onCheckedChange={(checked) => 
+                          onCompassLettersChange?.({ ...compassLetters, east: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="compass-west">West (W)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show "W" at the left
+                        </p>
+                      </div>
+                      <Switch
+                        id="compass-west"
+                        checked={compassLetters.west}
+                        onCheckedChange={(checked) => 
+                          onCompassLettersChange?.({ ...compassLetters, west: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {showReferencePoints && (compassLetters.north || compassLetters.south || compassLetters.east || compassLetters.west) && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Note:</strong> Compass letters will appear outside the reference lines when both are enabled. Export canvas will be automatically sized to include the letters.
+                      </p>
                     </div>
                   )}
                 </AccordionContent>

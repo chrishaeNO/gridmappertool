@@ -11,6 +11,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { getColumnLabel } from '@/utils/columnLabels';
 import { GridMapperProps } from '@/components/grid-mapper';
+import { drawCompassLetters, getCompassLettersSpacing, hasCompassLetters, type CompassLettersSettings } from '@/utils/compass-letters-export';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -83,6 +84,14 @@ function HomeContent() {
     right: '#ff0000',  // Red
     bottom: '#000000', // Black
     left: '#01b050'    // Green (updated standard)
+  });
+  
+  // Compass letters state (N, S, E, W)
+  const [compassLetters, setCompassLetters] = useState({
+    north: false,
+    south: false,
+    east: false,
+    west: false
   });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -202,6 +211,15 @@ function HomeContent() {
           left: '#01b050'
         });
         setSliceImageSettings(parsedSliceImageSettings || {});
+        
+        // Load compass letters settings
+        setCompassLetters(mapData.compassLetters || {
+          north: false,
+          south: false,
+          east: false,
+          west: false
+        });
+        
         setIsMapSaved(true);
 
         toast({
@@ -524,6 +542,8 @@ function HomeContent() {
         sliceNames: sliceNamesObject, // Convert array to object
         sliceImageSettings: sliceImageSettings || {},
         shared: isShared,
+        // Compass letters settings
+        compassLetters,
         // Add missing fields that Prisma expects
         cellSize,
         unit,
@@ -711,6 +731,14 @@ function HomeContent() {
       right: '#ff0000',
       bottom: '#000000',
       left: '#01b050'
+    });
+    
+    // Reset compass letters settings
+    setCompassLetters({
+      north: false,
+      south: false,
+      east: false,
+      west: false
     });
     
     toast({
@@ -952,6 +980,11 @@ function HomeContent() {
             badgeSpacing = 16 * scale; // Space for badge above labels
           }
           
+          // Calculate extra space needed for compass letters
+          const compassLettersSpacing = getCompassLettersSpacing(compassLetters, scale, showReferencePoints);
+          extraWidth += compassLettersSpacing.left + compassLettersSpacing.right;
+          extraHeight += compassLettersSpacing.top + compassLettersSpacing.bottom;
+          
           // Add grid line thickness to ensure boundary lines are fully visible
           const scaledGridThickness = gridThickness * scale;
           tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
@@ -969,9 +1002,9 @@ function HomeContent() {
           const sliceX = col * sliceWidth;
           const sliceY = row * sliceHeight;
 
-          // Offset image position to account for reference line margins and badge spacing
-          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
-          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing);
+          // Offset image position to account for reference line margins, badge spacing, AND compass letters centering
+          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0) + compassLettersSpacing.left;
+          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing) + compassLettersSpacing.top;
           
           // For slice-specific settings, we need to draw the image differently
           if (sliceSettings && (sliceSettings.zoom !== imageZoom || 
@@ -1131,8 +1164,9 @@ function HomeContent() {
                 // Only show labels for cells that are fully within the grid area
                 if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
-                    // Top labels
-                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
+                    // Top labels - positioned relative to grid, not canvas edge
+                    const labelY = imageOffsetY - exportLabelSize / 2;
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, labelY);
                 }
             }
             
@@ -1143,8 +1177,9 @@ function HomeContent() {
                 // Only show labels for cells that are fully within the grid area
                 if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
                     const char = getColumnLabel(startColIndex + i);
-                    // Bottom labels - samme X som topp, men Y i bunn label-området
-                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, imageOffsetY + scaledSliceHeight + exportLabelSize / 2);
+                    // Bottom labels - positioned relative to grid, not canvas edge
+                    const labelY = imageOffsetY + scaledSliceHeight + exportLabelSize / 2;
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, labelY);
                 }
             }
             
@@ -1155,8 +1190,9 @@ function HomeContent() {
                 // Only show labels for cells that are fully within the grid area
                 if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
-                    // Left labels
-                    tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                    // Left labels - positioned relative to grid, not canvas edge
+                    const labelX = imageOffsetX - exportLabelSize / 2;
+                    tempCtx.fillText(numLabel.toString(), labelX, imageOffsetY + yOnSlice + scaledCellSize / 2);
                 }
             }
             
@@ -1167,8 +1203,9 @@ function HomeContent() {
                 // Only show labels for cells that are fully within the grid area
                 if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
-                    // Right labels - samme Y som venstre, men X i høyre label-området
-                    tempCtx.fillText(numLabel.toString(), imageOffsetX + scaledSliceWidth + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                    // Right labels - positioned relative to grid, not canvas edge
+                    const labelX = imageOffsetX + scaledSliceWidth + exportLabelSize / 2;
+                    tempCtx.fillText(numLabel.toString(), labelX, imageOffsetY + yOnSlice + scaledCellSize / 2);
                 }
             }
           }
@@ -1179,29 +1216,32 @@ function HomeContent() {
             const sliceContentWidth = scaledSliceWidth + (2 * exportLabelSize); // Updated for labels on both sides
             const sliceContentHeight = scaledSliceHeight + (2 * exportLabelSize); // Updated for labels on top and bottom
             
-            // REFERANSELINJER SOM RAMME RUNDT HELE DET EXPORTERTE BILDET
-            const totalCanvasWidth = tempCanvas.width;
-            const totalCanvasHeight = tempCanvas.height;
+            // REFERANSELINJER RUNDT GRID-INNHOLDET (med mellomrom fra grid-etiketter)
+            const referenceSpacing = 10 * scale; // Mellomrom mellom etiketter og referanselinjer
+            const contentWithLabelsWidth = scaledSliceWidth + (2 * exportLabelSize);
+            const contentWithLabelsHeight = scaledSliceHeight + (2 * exportLabelSize);
             
-            // Top line: samme bredde som grid, sentrert i canvas
+            // Calculate position of content area (grid + labels) + spacing
+            const contentStartX = imageOffsetX - exportLabelSize - referenceSpacing;
+            const contentStartY = imageOffsetY - exportLabelSize - referenceSpacing;
+            const contentWidth = contentWithLabelsWidth + (2 * referenceSpacing);
+            const contentHeight = contentWithLabelsHeight + (2 * referenceSpacing);
+            
+            // Top line: over grid-kartet (kun grid-bredde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.top;
-            const topLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
-            tempCtx.fillRect(topLineX, 0, scaledSliceWidth, lineThickness);
+            tempCtx.fillRect(imageOffsetX, imageOffsetY - exportLabelSize - referenceSpacing - lineThickness, scaledSliceWidth, lineThickness);
             
-            // Right line: samme høyde som grid, sentrert i canvas
+            // Right line: til høyre for grid-kartet (kun grid-høyde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.right;
-            const rightLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
-            tempCtx.fillRect(totalCanvasWidth - lineThickness, rightLineY, lineThickness, scaledSliceHeight);
+            tempCtx.fillRect(imageOffsetX + scaledSliceWidth + exportLabelSize + referenceSpacing, imageOffsetY, lineThickness, scaledSliceHeight);
             
-            // Bottom line: samme bredde som grid, sentrert i canvas
+            // Bottom line: under grid-kartet (kun grid-bredde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.bottom;
-            const bottomLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
-            tempCtx.fillRect(bottomLineX, totalCanvasHeight - lineThickness, scaledSliceWidth, lineThickness);
+            tempCtx.fillRect(imageOffsetX, imageOffsetY + scaledSliceHeight + exportLabelSize + referenceSpacing, scaledSliceWidth, lineThickness);
             
-            // Left line: samme høyde som grid, sentrert i canvas
+            // Left line: til venstre for grid-kartet (kun grid-høyde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.left;
-            const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
-            tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
+            tempCtx.fillRect(imageOffsetX - exportLabelSize - referenceSpacing - lineThickness, imageOffsetY, lineThickness, scaledSliceHeight);
           }
           
           // Add slice name and grid info badge
@@ -1272,6 +1312,21 @@ function HomeContent() {
           
           tempCtx.restore();
           
+          // Draw compass letters if any are enabled
+          if (hasCompassLetters(compassLetters)) {
+            drawCompassLetters(compassLetters, {
+              canvas: tempCanvas,
+              ctx: tempCtx,
+              scale: scale,
+              imageOffsetX: imageOffsetX,
+              imageOffsetY: imageOffsetY,
+              imageWidth: scaledSliceWidth,
+              imageHeight: scaledSliceHeight,
+              showReferencePoints: showReferencePoints,
+              labelColor: labelColor
+            });
+          }
+          
           const blob = await new Promise<Blob | null>(resolve => tempCanvas.toBlob(resolve, 'image/jpeg', 0.9));
           if (blob) {
             zip.file(`${sliceName}.jpg`, blob);
@@ -1316,11 +1371,12 @@ function HomeContent() {
     imageZoom,
     panOffset,
     imageRotation,
-    sliceImageSettings
+    sliceImageSettings,
+    compassLetters
   ]);
 
   const gridMapperProps: Omit<GridMapperProps, 'imageSrc' | 'imageDimensions' | 'onImageUpload' | 'onImageLoad' | 'gridOffset'> = {
-    cellSize, setCellSize, unit, setUnit, dpi, setDpi, gridColor, setGridColor, labelColor, setLabelColor, backgroundColor, setBackgroundColor, gridThickness, setGridThickness, splitCols, setSplitCols, splitRows, setSplitRows, sliceNames, setSliceNames, showCenterCoords, setShowCenterCoords, showScaleBar, setShowScaleBar, isGridCropped, onGridCropChange: setIsGridCropped, selectedSliceIndex, setSelectedSliceIndex, mapName, setMapName, imageZoom, setImageZoom, panOffset, setPanOffset, sliceImageSettings, onSliceImageSettingsChange: updateSliceImageSettings, onResetSliceSettings: resetSliceImageSettings, onResetAllSliceSettings: resetAllSliceImageSettings, showReferencePoints, onToggleReferencePoints: setShowReferencePoints, referenceColors, setReferenceColors, imageRotation, onRotateImage: rotateImage, onSetNorthUp: setNorthUp, isRotationMode, onToggleRotationMode: toggleRotationMode, onInteractiveRotation: handleInteractiveRotation
+    cellSize, setCellSize, unit, setUnit, dpi, setDpi, gridColor, setGridColor, labelColor, setLabelColor, backgroundColor, setBackgroundColor, gridThickness, setGridThickness, splitCols, setSplitCols, splitRows, setSplitRows, sliceNames, setSliceNames, showCenterCoords, setShowCenterCoords, showScaleBar, setShowScaleBar, isGridCropped, onGridCropChange: setIsGridCropped, selectedSliceIndex, setSelectedSliceIndex, mapName, setMapName, imageZoom, setImageZoom, panOffset, setPanOffset, sliceImageSettings, onSliceImageSettingsChange: updateSliceImageSettings, onResetSliceSettings: resetSliceImageSettings, onResetAllSliceSettings: resetAllSliceImageSettings, showReferencePoints, onToggleReferencePoints: setShowReferencePoints, referenceColors, setReferenceColors, imageRotation, onRotateImage: rotateImage, onSetNorthUp: setNorthUp, isRotationMode, onToggleRotationMode: toggleRotationMode, onInteractiveRotation: handleInteractiveRotation, compassLetters, onCompassLettersChange: setCompassLetters
   };
 
   return (
@@ -1781,6 +1837,11 @@ function HomeContent() {
             badgeSpacing = 16 * scale;
           }
           
+          // Calculate extra space needed for compass letters
+          const compassLettersSpacing = getCompassLettersSpacing(compassLetters, scale, showReferencePoints);
+          extraWidth += compassLettersSpacing.left + compassLettersSpacing.right;
+          extraHeight += compassLettersSpacing.top + compassLettersSpacing.bottom;
+          
           const scaledGridThickness = gridThickness * scale;
           tempCanvas.width = scaledSliceWidth + (2 * exportLabelSize) + extraWidth + scaledGridThickness;
           tempCanvas.height = scaledSliceHeight + (2 * exportLabelSize) + extraHeight + badgeSpacing + scaledGridThickness;
@@ -1799,9 +1860,9 @@ function HomeContent() {
           const sliceX = col * sliceWidth;
           const sliceY = row * sliceHeight;
 
-          // Offset image position - EXACT same as handleExport
-          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0);
-          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing);
+          // Offset image position - EXACT same as handleExport (including compass letters for centering)
+          const imageOffsetX = exportLabelSize + (showReferencePoints ? linePadding : 0) + compassLettersSpacing.left;
+          const imageOffsetY = exportLabelSize + (showReferencePoints ? linePadding : badgeSpacing) + compassLettersSpacing.top;
           
           // Standard slice drawing - EXACT same as handleExport
           tempCtx.save();
@@ -1903,7 +1964,8 @@ function HomeContent() {
                 
                 if (xOnSlice >= 0 && xOnSlice + scaledCellSize <= actualGridWidth) {
                     const char = String.fromCharCode(65 + ((startColIndex + i) % 26));
-                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, (showReferencePoints ? linePadding : badgeSpacing) + exportLabelSize / 2);
+                    const labelY = imageOffsetY - exportLabelSize / 2;
+                    tempCtx.fillText(char, imageOffsetX + xOnSlice + scaledCellSize / 2, labelY);
                 }
             }
             
@@ -1923,7 +1985,8 @@ function HomeContent() {
                 
                 if (yOnSlice >= 0 && yOnSlice + scaledCellSize <= actualGridHeight) {
                     const numLabel = startRowIndex + i + 1;
-                    tempCtx.fillText(numLabel.toString(), (showReferencePoints ? linePadding : 0) + exportLabelSize / 2, imageOffsetY + yOnSlice + scaledCellSize / 2);
+                    const labelX = imageOffsetX - exportLabelSize / 2;
+                    tempCtx.fillText(numLabel.toString(), labelX, imageOffsetY + yOnSlice + scaledCellSize / 2);
                 }
             }
             
@@ -1938,31 +2001,34 @@ function HomeContent() {
             }
           }
           
-          // Reference lines - EXACT same as handleExport
+          // Reference lines - EXACT same as handleExport (med mellomrom fra grid-etiketter)
           if (showReferencePoints) {
             const lineThickness = 4 * scale;
-            const totalCanvasWidth = tempCanvas.width;
-            const totalCanvasHeight = tempCanvas.height;
+            const referenceSpacing = 10 * scale; // Mellomrom mellom etiketter og referanselinjer
+            const contentWithLabelsWidth = scaledSliceWidth + (2 * exportLabelSize);
+            const contentWithLabelsHeight = scaledSliceHeight + (2 * exportLabelSize);
             
-            // Top line
+            // Calculate position of content area (grid + labels) + spacing
+            const contentStartX = imageOffsetX - exportLabelSize - referenceSpacing;
+            const contentStartY = imageOffsetY - exportLabelSize - referenceSpacing;
+            const contentWidth = contentWithLabelsWidth + (2 * referenceSpacing);
+            const contentHeight = contentWithLabelsHeight + (2 * referenceSpacing);
+            
+            // Top line: over grid-kartet (kun grid-bredde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.top;
-            const topLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
-            tempCtx.fillRect(topLineX, 0, scaledSliceWidth, lineThickness);
+            tempCtx.fillRect(imageOffsetX, imageOffsetY - exportLabelSize - referenceSpacing - lineThickness, scaledSliceWidth, lineThickness);
             
-            // Right line
+            // Right line: til høyre for grid-kartet (kun grid-høyde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.right;
-            const rightLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
-            tempCtx.fillRect(totalCanvasWidth - lineThickness, rightLineY, lineThickness, scaledSliceHeight);
+            tempCtx.fillRect(imageOffsetX + scaledSliceWidth + exportLabelSize + referenceSpacing, imageOffsetY, lineThickness, scaledSliceHeight);
             
-            // Bottom line
+            // Bottom line: under grid-kartet (kun grid-bredde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.bottom;
-            const bottomLineX = (totalCanvasWidth - scaledSliceWidth) / 2;
-            tempCtx.fillRect(bottomLineX, totalCanvasHeight - lineThickness, scaledSliceWidth, lineThickness);
+            tempCtx.fillRect(imageOffsetX, imageOffsetY + scaledSliceHeight + exportLabelSize + referenceSpacing, scaledSliceWidth, lineThickness);
             
-            // Left line
+            // Left line: til venstre for grid-kartet (kun grid-høyde, ikke møter hjørner)
             tempCtx.fillStyle = referenceColors.left;
-            const leftLineY = (totalCanvasHeight - scaledSliceHeight) / 2;
-            tempCtx.fillRect(0, leftLineY, lineThickness, scaledSliceHeight);
+            tempCtx.fillRect(imageOffsetX - exportLabelSize - referenceSpacing - lineThickness, imageOffsetY, lineThickness, scaledSliceHeight);
           }
           
           // Badge - EXACT same as handleExport
@@ -2015,6 +2081,21 @@ function HomeContent() {
           tempCtx.fillText(combinedText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
           
           tempCtx.restore();
+          
+          // Draw compass letters if any are enabled
+          if (hasCompassLetters(compassLetters)) {
+            drawCompassLetters(compassLetters, {
+              canvas: tempCanvas,
+              ctx: tempCtx,
+              scale: scale,
+              imageOffsetX: imageOffsetX,
+              imageOffsetY: imageOffsetY,
+              imageWidth: scaledSliceWidth,
+              imageHeight: scaledSliceHeight,
+              showReferencePoints: showReferencePoints,
+              labelColor: labelColor
+            });
+          }
           
           return new Promise<Blob>((resolve, reject) => {
             tempCanvas.toBlob((blob) => {

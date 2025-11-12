@@ -53,6 +53,12 @@ type ImageGridDisplayProps = {
   };
   imageRotation?: number;
   isRotationMode?: boolean;
+  compassLetters?: {
+    north: boolean;
+    south: boolean;
+    east: boolean;
+    west: boolean;
+  };
 };
 
 const GridLines = React.memo(({ numCols, numRows, colWidth, rowHeight, strokeColor, strokeWidth }: any) => {
@@ -115,6 +121,7 @@ function ImageGridDisplay({
   },
   imageRotation = 0,
   isRotationMode = false,
+  compassLetters = { north: false, south: false, east: false, west: false },
 }: ImageGridDisplayProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -767,6 +774,9 @@ function ImageGridDisplay({
                     }
                 </div>
             )}
+            
+            {/* Compass Letters Overlay disabled for slices to avoid overlapping with grid */}
+            {/* Compass letters are only shown on the main overlay when not split */}
         </div>
     );
 }

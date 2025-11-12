@@ -8,6 +8,7 @@ import ImageGridDisplay from './image-grid-display';
 import ScaleBar from './scale-bar';
 import CompassOverlay from './compass-overlay';
 import InteractiveRotationOverlay from './interactive-rotation-overlay';
+import CompassLettersOverlay from './compass-letters-overlay';
 import { Slider } from "@/components/ui/slider";
 import { useDragDrop } from '@/hooks/use-drag-drop';
 import { useToast } from '@/hooks/use-toast';
@@ -79,6 +80,19 @@ type ImageWorkspaceProps = {
   isRotationMode?: boolean;
   onToggleRotationMode?: () => void;
   onInteractiveRotation?: (angle: number) => void;
+  // Compass letters props
+  compassLetters?: {
+    north: boolean;
+    south: boolean;
+    east: boolean;
+    west: boolean;
+  };
+  onCompassLettersChange?: (letters: {
+    north: boolean;
+    south: boolean;
+    east: boolean;
+    west: boolean;
+  }) => void;
 };
 
 export default function ImageWorkspace({
@@ -130,6 +144,8 @@ export default function ImageWorkspace({
   isRotationMode = false,
   onToggleRotationMode,
   onInteractiveRotation,
+  compassLetters = { north: false, south: false, east: false, west: false },
+  onCompassLettersChange,
 }: ImageWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -562,6 +578,7 @@ export default function ImageWorkspace({
                       referenceColors={localReferenceColors}
                       imageRotation={imageRotation}
                       isRotationMode={isRotationMode}
+                      compassLetters={compassLetters}
                   />
                   
                   {/* Reference Points are now handled entirely by ImageGridDisplay */}
@@ -654,6 +671,15 @@ export default function ImageWorkspace({
             : imageRotation
           }
           onRotationChange={onInteractiveRotation || (() => {})}
+          containerRef={containerRef}
+        />
+      )}
+      
+      {/* Compass Letters Overlay - Only show when not using map splitting */}
+      {imageSrc && splitCols * splitRows === 1 && (
+        <CompassLettersOverlay
+          compassLetters={compassLetters}
+          showReferencePoints={showReferencePoints}
           containerRef={containerRef}
         />
       )}

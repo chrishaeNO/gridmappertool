@@ -52,6 +52,12 @@ type GridDisplayContainerProps = {
     };
     imageRotation?: number;
     isRotationMode?: boolean;
+    compassLetters?: {
+        north: boolean;
+        south: boolean;
+        east: boolean;
+        west: boolean;
+    };
 };
 
 const GridDisplayContainer = ({
@@ -96,6 +102,7 @@ const GridDisplayContainer = ({
     },
     imageRotation = 0,
     isRotationMode = false,
+    compassLetters = { north: false, south: false, east: false, west: false },
 }: GridDisplayContainerProps) => {
 
     if (!imageSrc || !imageDimensions) {
@@ -156,6 +163,7 @@ const GridDisplayContainer = ({
                     referenceColors={referenceColors}
                     imageRotation={imageRotation}
                     isRotationMode={isRotationMode}
+                    compassLetters={compassLetters}
                 />
             );
         }
